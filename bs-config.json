@@ -1,0 +1,11 @@
+{
+  "port": 3000,
+  "server": {
+    "baseDir": "./frontend"
+  },
+  "files": ["./frontend/**/*.{html,css,js}"],
+  "watchOptions": {
+    "ignored": "node_modules"
+  },
+  "open": true
+}

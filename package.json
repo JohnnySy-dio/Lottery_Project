@@ -1,0 +1,27 @@
+{
+  "name": "decentralized-lottery",
+  "version": "1.0.0",
+  "description": "A decentralized lottery application with Ethereum smart contract",
+  "main": "server.js",  "scripts": {
+    "start": "node server.js",
+    "dev": "lite-server",
+    "test-connection": "powershell -ExecutionPolicy Bypass -File test-connection.ps1",
+    "compile": "truffle compile",
+    "migrate": "truffle migrate --reset",
+    "build": "truffle compile && truffle migrate --reset"
+  },
+  "keywords": [
+    "ethereum",
+    "blockchain",
+    "solidity",
+    "web3",
+    "lottery"
+  ],
+  "dependencies": {
+    "express": "^4.18.2",
+    "web3": "^1.10.0"
+  },
+  "devDependencies": {
+    "lite-server": "^2.6.1"
+  }
+}

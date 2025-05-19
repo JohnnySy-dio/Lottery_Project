@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decentralized Lottery</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="text-center py-4">
+            <h1>Decentralized Lottery</h1>
+            <p class="lead">A transparent and fair lottery on the Ethereum blockchain</p>
+        </header>        <div class="alert alert-info" id="status-message">
+            <p>Connect your Metamask wallet to interact with the lottery.</p>
+        </div>
+        
+        <!-- Network Status Indicator -->
+        <div id="network-status-area" style="display:none;"></div>
+        
+        <!-- Transaction Status Area -->
+        <div id="tx-status-container" class="mb-4">
+            <!-- Transaction status messages will be inserted here -->
+        </div><!-- Connect Wallet Button -->
+        <div class="row mb-4">
+            <div class="col-md-12 text-center">
+                <button id="connect-wallet-btn" class="btn btn-success btn-lg">Connect Wallet</button>
+                <button id="switch-network-btn" class="btn btn-outline-warning ms-2" style="display:none;">Switch Network</button>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Lottery Information</h2>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Contract Address:</strong> <span id="contract-address">Loading...</span></p>
+                        <p><strong>Owner Address:</strong> <span id="owner-address">Loading...</span></p>
+                        <p><strong>Current Lottery ID:</strong> <span id="lottery-id">Loading...</span></p>
+                        <p><strong>Entry Fee:</strong> <span id="entry-fee">Loading...</span> ETH</p>
+                        <p><strong>Minimum Players:</strong> <span id="min-players">Loading...</span></p>
+                        <p><strong>Lottery Status:</strong> <span id="lottery-status">Loading...</span></p>                        <p><strong>Prize Pool:</strong> <span id="prize-pool">Loading...</span> ETH</p>
+                        <p><strong>Players Joined:</strong> <span id="player-count">Loading...</span></p>
+                        <div class="text-center mt-3">
+                            <button id="refresh-btn" class="btn btn-outline-secondary btn-sm">Manual Refresh</button>
+                            <small class="text-muted d-block mt-1">Auto-refreshing every 5 seconds</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Enter Lottery</h2>
+                    </div>
+                    <div class="card-body">
+                        <p>Join this round of the lottery by paying the entry fee.</p>
+                        <button id="enter-btn" class="btn btn-primary btn-lg w-100 mb-3">Enter Lottery</button>
+                        <div id="user-status" class="alert alert-light">
+                            You are not yet participating in this round.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Players in Current Lottery</h2>
+                    </div>
+                    <div class="card-body">
+                        <div id="players-list" class="list-group">
+                            <div class="text-center text-muted">
+                                No players yet
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4" id="admin-section" style="display:none;">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-warning">
+                        <div class="header-content">
+                            <h2>Admin Controls</h2>
+                            <small class="text-muted">Auto-refreshing panel status</small>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 mb-2">
+                                <button id="close-lottery-btn" class="btn btn-danger w-100">Close Lottery</button>
+                            </div>
+                            <div class="col-md-4 mb-2">
+                                <button id="open-lottery-btn" class="btn btn-success w-100">Open Lottery</button>
+                            </div>
+                            <div class="col-md-4 mb-2">
+                                <button id="pick-winner-btn" class="btn btn-primary w-100">Pick Winner</button>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <input type="number" id="entry-fee-input" class="form-control" placeholder="New Entry Fee (ETH)" step="0.001" min="0.001">
+                                    <button id="set-fee-btn" class="btn btn-outline-secondary">Set Fee</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Previous Winners</h2>
+                    </div>
+                    <div class="card-body">
+                        <div id="winners-list" class="list-group">
+                            <div class="text-center text-muted">
+                                No previous winners
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="text-center py-4">
+            <p>Built with ❤️ using Ethereum, Web3.js and Bootstrap</p>
+        </footer>
+    </div>
+
+    <!-- Modal for notifications -->
+    <div class="modal fade" id="notification-modal" tabindex="-1" aria-labelledby="notification-modal-label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="notification-modal-label">Notification</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="notification-modal-body">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>    </div>    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+    <script src="js/transaction-helper.js"></script>
+    <script src="js/transaction-debug.js"></script>
+    <script src="js/connect-wallet.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/transaction-enhanced-new.js"></script>
+    <script src="js/button-replacer.js"></script>
+    <script src="js/transaction-test.js"></script>
+</body>
+</html>
