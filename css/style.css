@@ -1,0 +1,289 @@
+/**
+ * Decentralized Lottery - Main Stylesheet
+ */
+
+:root {
+    --primary-color: #6c5ce7;
+    --secondary-color: #a29bfe;
+    --success-color: #00b894;
+    --danger-color: #d63031;
+    --warning-color: #fdcb6e;
+    --light-color: #f8f9fa;
+    --dark-color: #2d3436;
+}
+
+body {
+    font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    background-color: #f9f9f9;
+    color: #333;
+    line-height: 1.6;
+    padding-top: 56px;
+    padding-bottom: 3rem;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header & Navigation */
+.navbar-brand img {
+    height: 30px;
+    margin-right: 0.5rem;
+}
+
+.nav-link {
+    font-weight: 500;
+}
+
+.navbar-light .navbar-nav .nav-link.active {
+    color: var(--primary-color);
+}
+
+/* Main content */
+main {
+    flex: 1;
+}
+
+.hero-section {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+    padding: 3rem 0;
+    margin-bottom: 2rem;
+    border-radius: 0 0 20px 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.card {
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    margin-bottom: 1.5rem;
+    border: none;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    background-color: rgba(108, 92, 231, 0.1);
+    border-bottom: none;
+    font-weight: 600;
+    padding: 1rem 1.25rem;
+    border-radius: 10px 10px 0 0 !important;
+}
+
+.lottery-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.info-item {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.info-item-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+}
+
+.info-item-value {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+/* Buttons */
+.btn {
+    border-radius: 6px;
+    padding: 0.5rem 1.2rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background-color: #5a4ccb;
+    border-color: #5a4ccb;
+}
+
+.btn-success {
+    background-color: var(--success-color);
+    border-color: var(--success-color);
+}
+
+.btn-success:hover {
+    background-color: #00a383;
+    border-color: #00a383;
+}
+
+.btn-danger {
+    background-color: var(--danger-color);
+    border-color: var(--danger-color);
+}
+
+.btn-danger:hover {
+    background-color: #c12e2e;
+    border-color: #c12e2e;
+}
+
+.btn-outline-primary {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+/* Status indicators */
+.loading-indicator {
+    display: none;
+}
+
+.connection-status {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.connection-status.connected {
+    background-color: rgba(0, 184, 148, 0.1);
+    color: var(--success-color);
+}
+
+.connection-status.disconnected {
+    background-color: rgba(214, 48, 49, 0.1);
+    color: var(--danger-color);
+}
+
+.connection-status i {
+    margin-right: 0.5rem;
+}
+
+/* Tables */
+.table th {
+    border-top: none;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.participants-table {
+    margin-top: 2rem;
+}
+
+/* Notifications */
+#toastContainer {
+    position: fixed;
+    top: 70px;
+    right: 20px;
+    z-index: 1060;
+}
+
+.toast {
+    min-width: 250px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 0.75rem;
+    border-radius: 6px;
+    border: none;
+}
+
+.toast-header {
+    border-radius: 6px 6px 0 0;
+    padding: 0.5rem 1rem;
+}
+
+.toast-body {
+    padding: 1rem;
+}
+
+/* Footer */
+footer {
+    background-color: var(--light-color);
+    padding: 2rem 0;
+    margin-top: auto;
+}
+
+footer a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+footer a:hover {
+    text-decoration: underline;
+}
+
+#footerContractAddress {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    background-color: rgba(108, 92, 231, 0.1);
+    border-radius: 4px;
+    font-family: monospace;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+#footerContractAddress:hover {
+    background-color: rgba(108, 92, 231, 0.2);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .hero-section {
+        padding: 2rem 0;
+    }
+    
+    .lottery-info-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 576px) {
+    .lottery-info-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .btn {
+        display: block;
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+}
+
+/* Animation */
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(108, 92, 231, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(108, 92, 231, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(108, 92, 231, 0);
+    }
+}
+
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+/* Dark mode adjustments (for future use) */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --light-color: #2d3436;
+        --dark-color: #f8f9fa;
+    }
+} 
