@@ -1,27 +1,34 @@
 {
-  "name": "decentralized-lottery",
+  "name": "decentralized-lottery-dapp",
   "version": "1.0.0",
-  "description": "A decentralized lottery application with Ethereum smart contract",
-  "main": "server.js",  "scripts": {
-    "start": "node server.js",
-    "dev": "lite-server",
-    "test-connection": "powershell -ExecutionPolicy Bypass -File test-connection.ps1",
+  "description": "A decentralized lottery application on Ethereum Sepolia testnet",
+  "main": "truffle-config.js",
+  "scripts": {
+    "test": "truffle test",
     "compile": "truffle compile",
-    "migrate": "truffle migrate --reset",
-    "build": "truffle compile && truffle migrate --reset"
+    "migrate": "truffle migrate",
+    "migrate:sepolia": "truffle migrate --network sepolia",
+    "serve": "serve frontend",
+    "deploy": "gh-pages -d frontend"
   },
   "keywords": [
     "ethereum",
     "blockchain",
-    "solidity",
-    "web3",
-    "lottery"
+    "lottery",
+    "dapp",
+    "smart-contract",
+    "web3"
   ],
+  "author": "",
+  "license": "MIT",
   "dependencies": {
-    "express": "^4.18.2",
+    "@truffle/hdwallet-provider": "^2.1.5",
+    "dotenv": "^16.0.3",
     "web3": "^1.10.0"
   },
   "devDependencies": {
-    "lite-server": "^2.6.1"
+    "gh-pages": "^5.0.0",
+    "serve": "^14.2.0",
+    "truffle": "^5.8.1"
   }
 }

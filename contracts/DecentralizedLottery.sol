@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.19;
 
 contract DecentralizedLottery {
     address public owner;
     address[] public players;
     uint public lotteryId;
     mapping(uint => address) public lotteryHistory;
-    uint public entryFee = 0.01 ether;
+    uint public entryFee = 0.001 ether;
     uint public minPlayers = 3;
     bool public lotteryOpen = true;
     
@@ -24,7 +24,7 @@ contract DecentralizedLottery {
     event AdminFeesWithdrawn(uint amount);
     
     constructor() {
-        owner = msg.sender;
+        owner = 0x64bDb9962c7408276EE7B2B774b597813A20c76b;
         lotteryId = 1;
         emit LotteryOpened(lotteryId, block.timestamp);
     }
@@ -122,6 +122,12 @@ contract DecentralizedLottery {
         emit LotteryOpened(lotteryId, block.timestamp);
     }
     
+    // Updated random function for post-Merge Ethereum
+    function random() private view returns (uint) {
+        // Use prevrandao instead of difficulty for post-Merge Ethereum
+        return uint(keccak256(abi.encodePacked(block.prevrandao, block.timestamp, players)));
+    }
+    
     // Function for admin to withdraw accumulated fees
     function withdrawAdminFees() public onlyOwner {
         require(adminFees > 0, "No fees to withdraw");
@@ -133,10 +139,5 @@ contract DecentralizedLottery {
         require(success, "Failed to transfer admin fees");
         
         emit AdminFeesWithdrawn(amount);
-    }
-    
-    // Simple random function (Note: This is not secure for production)
-    function random() private view returns (uint) {
-        return uint(keccak256(abi.encodePacked(block.difficulty, block.timestamp, players)));
     }
 }

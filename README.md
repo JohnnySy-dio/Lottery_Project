@@ -1,157 +1,90 @@
-# Decentralized Lottery
+# Decentralized Lottery dApp
 
-A blockchain-based lottery system built on Ethereum, featuring a transparent and fair lottery mechanism with a modern web interface.
+A fully decentralized lottery application running on the Ethereum Sepolia testnet. Users can enter the lottery by paying a small entry fee, and the contract owner can pick a random winner.
 
-## Project Overview
+## Features
 
-This decentralized lottery application allows users to:
+- Connect with MetaMask wallet
+- Enter lottery with testnet ETH
+- View current lottery status, prize pool, and participants
+- Admin controls for contract owner
+- Transparent winner selection
+- Previous winners history
 
-1. Enter a lottery by paying a small entry fee in ETH
-2. View current participants and prize pool
-3. See previous lottery winners
-4. (Admin only) Manage lottery rounds, set fees, and pick winners
+## Live Demo
 
-The project consists of:
-- A Solidity smart contract deployed on the Ethereum blockchain
-- A web-based frontend for interacting with the contract
+Visit the deployed lottery at: [https://yourusername.github.io/Lottery_Project](https://yourusername.github.io/Lottery_Project)
 
-## Technologies Used
-
-### Backend
-- Solidity ^0.8.0
-- Ethereum Blockchain
-
-### Frontend
-- HTML5 / CSS3
-- JavaScript
-- Web3.js
-- Bootstrap 5
-
-## Smart Contract Features
-
-The `DecentralizedLottery.sol` smart contract includes:
-
-- Entry fee management
-- Player tracking
-- Lottery state management (open/closed)
-- Secure winner selection
-- Prize distribution
-- Admin controls
-- Event logging
-
-## How It Works
-
-1. **Setup**: The contract owner deploys the lottery with initial parameters
-2. **Entry**: Players pay the required ETH to enter the lottery
-3. **Closing**: Admin closes the lottery when ready to select a winner
-4. **Winner Selection**: Admin triggers winner selection (only when closed and minimum players reached)
-5. **Prize Distribution**: The entire contract balance is automatically transferred to the winner
-6. **Reset**: A new lottery round starts automatically
-
-## Getting Started
-
-### Prerequisites
+## Prerequisites
 
 - [MetaMask](https://metamask.io/) browser extension
-- An Ethereum wallet with testnet ETH (for testing)
-- Node.js and npm (for local development)
-- [Ganache](https://trufflesuite.com/ganache/) for local blockchain development
+- Sepolia testnet ETH (available from [Sepolia Faucet](https://sepoliafaucet.com/))
+- Node.js and npm for local development
 
-### Local Development Setup
+## Deploying to Sepolia Testnet
 
-1. Install the required dependencies:
+1. Install dependencies:
    ```
    npm install
    ```
 
-2. Start Ganache - either the GUI or CLI version:
-   - Make sure it's running on `http://127.0.0.1:7545`
-   - Note the available accounts and their private keys
-
-3. Use the development script that handles compilation, deployment, and server startup:
+2. Create a `.env` file based on the provided `env.example`:
    ```
-   # For PowerShell
-   ./start-dev.ps1
-   
-   # For Command Prompt
-   start-dev.bat
+   cp env.example .env
    ```
-   - This will automatically:
-     - Check if Ganache is running
-     - Compile and deploy the smart contract
-     - Update the CONTRACT_ADDRESS in the frontend code
-     - Start the Express server on port 4000
 
-4. Access the application at `http://localhost:4000`
+3. Add your MetaMask mnemonic and Infura project ID to the `.env` file:
+   ```
+   MNEMONIC=your twelve word mnemonic goes here do not share with anyone
+   INFURA_PROJECT_ID=your_infura_project_id_here
+   ```
 
-### Testing Web3 Connection
-
-If you encounter issues connecting to Ganache, you can run the connection test:
-```
-./test-connection.ps1
-```
-This will:
-- Check if Ganache is running
-- Start a temporary server to serve the test page
-- Open the Web3 test page in your browser
-
-### Testnet Deployment (optional)
-
-1. Compile the smart contract:
+4. Compile and deploy your smart contract:
    ```
    npx truffle compile
+   npx truffle migrate --network sepolia
    ```
-2. Deploy to a testnet (like Goerli or Sepolia):
+
+5. Update the `CONTRACT_ADDRESS` in `frontend/js/app.js` with your newly deployed contract address.
+
+## Deploying to GitHub Pages
+
+1. Create a GitHub repository for your project.
+
+2. Push your code to the repository:
    ```
-   npx truffle migrate --network goerli
+   git init
+   git add .
+   git commit -m "Initial commit"
+   git remote add origin https://github.com/yourusername/Lottery_Project.git
+   git push -u origin main
    ```
-3. Update the `CONTRACT_ADDRESS` in `frontend/js/app.js` with your deployed contract address
-4. Set `USE_LOCAL_WEB3 = false` in `frontend/js/app.js`
 
-### Running the Frontend
+3. The GitHub Actions workflow (in `.github/workflows/deploy.yml`) will automatically deploy your frontend to GitHub Pages.
 
-1. For local testing:
+4. Go to your repository settings, navigate to "Pages," and ensure it's set up correctly (usually with the `gh-pages` branch as the source).
+
+## Local Development
+
+1. Run a local blockchain:
    ```
-   npm run dev
+   npx ganache-cli
    ```
-2. For production:
+
+2. Deploy contracts locally:
    ```
-   npm start
+   npx truffle migrate --network development
    ```
-3. Access via a web browser with MetaMask installed
 
-### Troubleshooting
+3. Update `frontend/js/app.js` to use the local settings:
+   ```javascript
+   const USE_LOCAL_WEB3 = true;
+   ```
 
-If you encounter issues:
-- Make sure Ganache is running and accessible
-- Check that the contract was deployed successfully
-- Verify the CONTRACT_ADDRESS is correctly set in app.js
-- Ensure you're connected to the right network in MetaMask
-
-## Using the Application
-
-### As a Player
-1. Connect your MetaMask wallet
-2. Check the entry fee and prize pool
-3. Click "Enter Lottery" to participate
-4. Wait for the lottery to complete to see if you won
-
-### As the Admin
-1. Connect with the owner wallet
-2. Use admin controls to:
-   - Close the lottery
-   - Pick a winner (when enough players have joined)
-   - Set new entry fees
-   - Start a new lottery round
-
-## Security Considerations
-
-This application is for educational purposes. In a production environment, consider:
-
-- Using a more secure randomness source (e.g., Chainlink VRF)
-- Adding more extensive testing
-- Implementing timeouts and additional safeguards
-- Getting a professional security audit
+4. Serve the frontend:
+   ```
+   npx serve frontend
+   ```
 
 ## License
 
@@ -159,14 +92,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Acknowledgments
 
-- Ethereum and Solidity documentation
-- Web3.js library
-- Bootstrap for UI components
-
-## Future Enhancements
-
-- Time-based lottery rounds
-- Multiple lottery categories with different entry fees
-- Token-based voting for lottery parameters
-- Escrow and dispute resolution mechanisms
-- Better randomness using Chainlink VRF
+- Ethereum Foundation
+- Truffle Suite
+- Web3.js
