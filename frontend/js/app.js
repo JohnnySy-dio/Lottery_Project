@@ -91,7 +91,7 @@ class App {
                     this.currentLotteryId,
                     this.web3Provider.userAccount
                 );
-            } else {
+        } else {
                 this.hasJoined = false;
             }
             
@@ -111,7 +111,7 @@ class App {
                 if (isOwner) {
                     this.uiController.updateAdminButtons(this.currentLotteryInfo);
                 }
-            } else {
+    } else {
                 this.uiController.showAdminControls(false);
             }
             
@@ -135,7 +135,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Make sure CONFIG is loaded and accessible before using it
     if (typeof CONFIG === 'undefined') {
         console.error('CONFIG object is not available. Make sure config.js is loaded before app.js');
-    } else {
+        } else {
         console.log('CONFIG object loaded, contract address:', CONFIG.CONTRACT_ADDRESS);
         
         // Set the footer contract address with the value from CONFIG

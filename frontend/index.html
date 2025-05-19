@@ -25,7 +25,7 @@
 <body>
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
-        <div class="container">
+    <div class="container">
             <a class="navbar-brand" href="#">
                 <i class="bi bi-coin text-primary me-2"></i>
                 Ethereum Lottery
@@ -59,7 +59,7 @@
                     <button id="switchNetworkBtn" class="btn btn-warning ms-2" style="display: none;">
                         Switch Network
                     </button>
-                </div>
+        </div>
             </div>
         </div>
     </nav>
@@ -130,9 +130,9 @@
                                 Join Lottery
                                 <span class="loading-indicator spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
                             </button>
-                        </div>
                     </div>
                 </div>
+            </div>
 
                 <!-- Admin Actions -->
                 <div id="adminActions" class="card mt-4" style="display: none;">
@@ -177,49 +177,49 @@
                                         <div class="input-group mb-3">
                                             <input type="number" id="newEntryFeeInput" class="form-control" placeholder="Fee in ETH" min="0.0001" step="0.0001">
                                             <span class="input-group-text">ETH</span>
-                                        </div>
+                    </div>
                                         <button id="setEntryFeeBtn" class="btn btn-primary w-100">
                                             <i class="bi bi-check-circle me-2"></i>
                                             Update Fee
                                             <span class="loading-indicator spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
                                         </button>
-                                    </div>
-                                </div>
-                            </div>
-                            
+                </div>
+            </div>
+        </div>
+
                             <!-- Set Min Players -->
                             <div class="col-md-4 mb-3">
-                                <div class="card">
+                <div class="card">
                                     <div class="card-header bg-light">
                                         <h6 class="mb-0">
                                             <i class="bi bi-people-fill me-2"></i>
                                             Set Min Players
                                         </h6>
-                                    </div>
-                                    <div class="card-body">
+                    </div>
+                    <div class="card-body">
                                         <div class="input-group mb-3">
                                             <input type="number" id="minPlayersInput" class="form-control" placeholder="Min players" min="2" step="1">
                                             <span class="input-group-text">Players</span>
-                                        </div>
+                            </div>
                                         <button id="setMinPlayersBtn" class="btn btn-primary w-100">
                                             <i class="bi bi-check-circle me-2"></i>
                                             Update Min Players
                                             <span class="loading-indicator spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
                                         </button>
-                                    </div>
-                                </div>
-                            </div>
-                            
+                </div>
+            </div>
+        </div>
+
                             <!-- Withdraw Admin Fees -->
                             <div class="col-md-4 mb-3">
-                                <div class="card">
+                <div class="card">
                                     <div class="card-header bg-light">
                                         <h6 class="mb-0">
                                             <i class="bi bi-cash-coin me-2"></i>
                                             Admin Fees
                                         </h6>
-                                    </div>
-                                    <div class="card-body">
+                    </div>
+                    <div class="card-body">
                                         <p class="card-text mb-3">Admin's accumulated fees are sent directly with each entry.</p>
                                         <div class="d-grid">
                                             <button id="withdrawFeesBtn" class="btn btn-info">
@@ -227,14 +227,14 @@
                                                 Withdraw Admin Fees
                                                 <span class="loading-indicator spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
                                             </button>
-                                        </div>
-                                    </div>
+                            </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
 
             <!-- Participants Section -->
             <div class="col-lg-4">
@@ -336,4 +336,4 @@
         });
     </script>
 </body>
-</html> 
+</html>

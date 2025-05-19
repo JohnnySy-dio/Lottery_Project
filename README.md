@@ -28,6 +28,27 @@ A fully transparent lottery application running on the Ethereum Sepolia testnet.
 - **Blockchain**: Ethereum (Sepolia Testnet)
 - **Smart Contract**: Solidity
 
+## Dependencies
+
+### Main Dependencies
+- **Node.js**: Version 20.11.0 or higher
+- **web3**: ^1.10.0 - Ethereum JavaScript API
+- **@truffle/hdwallet-provider**: ^2.1.5 - HD Wallet-enabled Web3 provider
+- **dotenv**: ^16.0.3 - Environment variable management
+
+### Development Dependencies
+- **truffle**: ^5.8.1 - Development framework for Ethereum
+- **serve**: ^14.2.0 - Static file serving for development
+- **gh-pages**: ^5.0.0 - GitHub Pages deployment tool
+
+### Browser Requirements
+- **MetaMask Extension**: Latest version
+- **Modern Web Browser**: Chrome, Firefox, or Erecommended
+
+### Local Development Tools
+- **Ganache**: Latest version - For local blockchain development
+- **Git**: For version control
+
 ## Contract Address
 
 The lottery smart contract is deployed on the Sepolia testnet at:
@@ -43,16 +64,20 @@ The lottery smart contract is deployed on the Sepolia testnet at:
 
 ## Live Demo
 
-Visit the live demo at: [https://your-username.github.io/ethereum-lottery/](https://your-username.github.io/ethereum-lottery/)
+Visit the live demo at: [Ethereum Lottery](https://johnnysy-dio.github.io/Lottery_Project/)
 
-## Development
+## Installation
 
 To run this project locally:
 
-1. Clone the repository: `git clone https://github.com/your-username/ethereum-lottery.git`
-2. Open `index.html` in your browser or use a local server
-3. Connect your MetaMask wallet to the Sepolia testnet
+1. Clone the repository: `git clone https://github.com/JohnnySy-dio/Lottery_Project.git`
+2. Make sure you have Node.js installed (Version 20.11.0 or higher)
+3. Install dependencies: `npm install`
+4. Run the frontend server: `node server.js`
+5. Open your browser and navigate to `http://localhost:3000` to view the application
+6. Connect MetaMask to Sepolia testnet
+
+## Local Test 
 
 ## License
-
 This project is licensed under the MIT License
