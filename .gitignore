@@ -1,8 +1,9 @@
-# Dependencies
+# Node.js dependencies
 node_modules/
 npm-debug.log
-yarn-debug.log
 yarn-error.log
+yarn-debug.log
+package-lock.json
 
 # Environment variables
 .env
@@ -11,13 +12,15 @@ yarn-error.log
 .env.test.local
 .env.production.local
 
-# Build files
+# Build artifacts
 /build
 /dist
+/.next/
+/out/
 
-# IDE and editor files
-.idea/
-.vscode/
+# IDEs and editors
+/.idea
+/.vscode
 *.swp
 *.swo
 .DS_Store
