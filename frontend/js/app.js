@@ -1,6 +1,6 @@
 // Decentralized Lottery Application
 const NETWORK_ID = "*"; // Any network ID for local development
-const CONTRACT_ADDRESS = "0x3239163a1583438ba78F850ab45065397852a98e" // Updated 2025-05-19 17:53:06 // Updated 2025-05-19 17:48:50 // Updated 2025-05-19 17:37:23; // Updated after redeployment
+const CONTRACT_ADDRESS = "0xa869582223058DB749e8F6eF13Ebaf5224eDb1D8" // Updated 2025-05-19 19:17:49 // Updated 2025-05-19 19:10:55 // Updated 2025-05-19 19:00:44 // Updated 2025-05-19 18:43:24 // Updated 2025-05-19 17:53:06 // Updated 2025-05-19 17:48:50 // Updated 2025-05-19 17:37:23; // Updated after redeployment
 
 // Development settings - set to true when using local development environment
 const USE_LOCAL_WEB3 = true;
@@ -44,6 +44,7 @@ let lotteryEvents = [];
 const statusMessage = document.getElementById('status-message');
 const contractAddress = document.getElementById('contract-address');
 const ownerAddress = document.getElementById('owner-address');
+const ownerBalance = document.getElementById('owner-balance');
 const lotteryIdElement = document.getElementById('lottery-id');
 const entryFeeElement = document.getElementById('entry-fee');
 const minPlayersElement = document.getElementById('min-players');
@@ -301,7 +302,8 @@ async function initApp() {
             accounts = await web3.eth.getAccounts();
             console.log("Using accounts from web3.eth.getAccounts():", accounts);
         }
-          if (!accounts || accounts.length === 0) {
+        
+        if (!accounts || accounts.length === 0) {
             console.warn("No accounts available - some features will be disabled");
             // Show user status as not connected
             statusMessage.innerHTML = `
@@ -314,15 +316,17 @@ async function initApp() {
             
             // Still load contract info
             try {
-                updateContractInfo();
-                updatePlayersList();
-                updateWinnersList();
+                await updateContractInfo();
+                await updatePlayersList();
+                await loadPastEvents(); // Load past events first
+                await updateWinnersList(); // Then update winners list
             } catch (error) {
                 console.error("Error updating contract info:", error);
             }
             
             return;
         }
+        
         // Check if current user is the contract owner
         const ownerAddress = await lotteryContract.methods.owner().call();
         isOwner = (accounts[0].toLowerCase() === ownerAddress.toLowerCase());
@@ -331,10 +335,11 @@ async function initApp() {
         adminSection.style.display = isOwner ? 'block' : 'none';
         
         // Update UI with contract information
-        updateContractInfo();
-        updatePlayersList();
-        updateWinnersList();
-        checkUserParticipation();
+        await updateContractInfo();
+        await updatePlayersList();
+        await loadPastEvents(); // Load past events first
+        await updateWinnersList(); // Then update winners list
+        await checkUserParticipation();
         
         // Update admin panel UI if user is the owner
         if (isOwner) {
@@ -343,11 +348,13 @@ async function initApp() {
         
         // Start event listener for contract events
         listenForEvents();
-          // Update status message
+        
+        // Update status message
         statusMessage.innerHTML = `
             <p>Connected with account: <strong class="address-text">${accounts[0]}</strong></p>
         `;
-          // Add network information if using MetaMask
+        
+        // Add network information if using MetaMask
         if (!USE_LOCAL_WEB3 && isMetaMaskInstalled()) {
             const networkInfo = await getNetworkDetails();
             statusMessage.innerHTML += `
@@ -379,6 +386,27 @@ async function initApp() {
     }
 }
 
+// New function to load past events
+async function loadPastEvents() {
+    try {
+        console.log("Loading past events...");
+        const events = await lotteryContract.getPastEvents('allEvents', {
+            fromBlock: 0,
+            toBlock: 'latest'
+        });
+        
+        // Sort events by block number to ensure correct order
+        events.sort((a, b) => a.blockNumber - b.blockNumber);
+        
+        lotteryEvents = events;
+        console.log("Past events loaded:", events.length, "events");
+        return events;
+    } catch (error) {
+        console.error("Error loading past events:", error);
+        return [];
+    }
+}
+
 // Update contract info in the UI
 async function updateContractInfo() {
     try {
@@ -391,6 +419,7 @@ async function updateContractInfo() {
             const errorMsg = "Contract not available";
             contractAddress.textContent = errorMsg;
             ownerAddress.textContent = errorMsg;
+            ownerBalance.textContent = errorMsg;
             lotteryIdElement.textContent = errorMsg;
             entryFeeElement.textContent = errorMsg;
             minPlayersElement.textContent = errorMsg;
@@ -417,6 +446,20 @@ async function updateContractInfo() {
             console.log("updateContractInfo: Fetching lottery data from contract...");
             const owner = await lotteryContract.methods.owner().call();
             console.log("updateContractInfo: owner:", owner);
+            
+            // Get owner's balance only if the current user is the owner
+            const currentAccount = await getCurrentAccount();
+            const isOwner = currentAccount && currentAccount.toLowerCase() === owner.toLowerCase();
+            
+            if (isOwner) {
+                const ownerBalanceWei = await web3.eth.getBalance(owner);
+                const ownerBalanceEth = web3.utils.fromWei(ownerBalanceWei, 'ether');
+                console.log("updateContractInfo: owner balance:", ownerBalanceEth, "ETH");
+                ownerBalance.textContent = parseFloat(ownerBalanceEth).toFixed(4);
+                ownerBalance.parentElement.style.display = 'block';
+            } else {
+                ownerBalance.parentElement.style.display = 'none';
+            }
             
             const lotteryId = await lotteryContract.methods.lotteryId().call();
             console.log("updateContractInfo: lotteryId:", lotteryId);
@@ -464,6 +507,7 @@ async function updateContractInfo() {
             const errorMsg = "Failed to load";
             contractAddress.textContent = errorMsg;
             ownerAddress.textContent = errorMsg;
+            ownerBalance.textContent = errorMsg;
             lotteryIdElement.textContent = errorMsg;
             entryFeeElement.textContent = errorMsg;
             minPlayersElement.textContent = errorMsg;
@@ -492,6 +536,7 @@ async function updateContractInfo() {
         const errorMsg = "Error";
         contractAddress.textContent = errorMsg;
         ownerAddress.textContent = errorMsg;
+        ownerBalance.textContent = errorMsg;
         lotteryIdElement.textContent = errorMsg;
         entryFeeElement.textContent = errorMsg;
         minPlayersElement.textContent = errorMsg;
@@ -567,10 +612,22 @@ async function updatePlayersList() {
 // Update the list of previous winners
 async function updateWinnersList() {
     try {
+        if (!web3 || !lotteryContract) {
+            console.error("Web3 or contract not initialized for winners list");
+            winnersList.innerHTML = `
+                <div class="text-center text-muted">
+                    Cannot connect to contract
+                </div>
+            `;
+            return;
+        }
+
+        // Get current lottery ID
         const lotteryId = await lotteryContract.methods.lotteryId().call();
+        console.log("Updating winners list for lottery ID:", lotteryId);
         
-        // Clear the current list
-        winnersList.innerHTML = '';
+        // Clear the current list and show loading state
+        winnersList.innerHTML = '<div class="text-center text-muted">Loading winners...</div>';
         
         // If there are no previous lotteries
         if (lotteryId <= 1) {
@@ -581,30 +638,39 @@ async function updateWinnersList() {
             `;
             return;
         }
-        
+
+        // Get all WinnerSelected events
+        const winnerEvents = await lotteryContract.getPastEvents('WinnerSelected', {
+            fromBlock: 0,
+            toBlock: 'latest'
+        });
+
+        // Sort events by lottery ID in descending order
+        winnerEvents.sort((a, b) => Number(b.returnValues.lotteryId) - Number(a.returnValues.lotteryId));
+
+        // Clear the list again before adding winners
+        winnersList.innerHTML = '';
+
+        // Process winners
         let winnersFound = false;
-        
-        // Get winners from previous lotteries (up to 10 most recent)
-        const startId = Math.max(1, lotteryId - 10);
-        for (let i = lotteryId - 1; i >= startId; i--) {
-            const winnerAddress = await lotteryContract.methods.lotteryHistory(i).call();
+        const processedLotteryIds = new Set();
+
+        for (const event of winnerEvents) {
+            const lotteryId = Number(event.returnValues.lotteryId);
             
-            // Skip if no winner (address 0)
-            if (winnerAddress === '0x0000000000000000000000000000000000000000') continue;
+            // Skip if we've already processed this lottery
+            if (processedLotteryIds.has(lotteryId)) continue;
             
-            winnersFound = true;
+            // Skip if this is the current lottery
+            if (lotteryId >= currentLotteryId) continue;
             
-            // Find the associated WinnerSelected event if available
-            const winnerEvent = lotteryEvents.find(e => 
-                e.event === 'WinnerSelected' && 
-                Number(e.returnValues.lotteryId) === i
-            );
+            // Skip if we've processed 10 winners
+            if (processedLotteryIds.size >= 10) break;
+
+            const winnerAddress = event.returnValues.winner;
+            const prizeAmount = web3.utils.fromWei(event.returnValues.amount, 'ether');
             
-            let prizeAmount = 'Unknown';
-            if (winnerEvent) {
-                prizeAmount = web3.utils.fromWei(winnerEvent.returnValues.amount, 'ether');
-            }
-              // Get the current account for highlighting
+            // Get the current account for highlighting
             const currentAccount = await getCurrentAccount();
             
             const item = document.createElement('div');
@@ -612,7 +678,7 @@ async function updateWinnersList() {
             item.innerHTML = `
                 <div>
                     <span class="trophy-icon">🏆</span>
-                    <span>Lottery #${i}</span>
+                    <span>Lottery #${lotteryId}</span>
                 </div>
                 <span class="address-text">${winnerAddress}</span>
                 <span class="eth-amount">${prizeAmount} ETH</span>
@@ -620,6 +686,9 @@ async function updateWinnersList() {
                     '<span class="badge bg-success">You</span>' : ''}
             `;
             winnersList.appendChild(item);
+            
+            processedLotteryIds.add(lotteryId);
+            winnersFound = true;
         }
         
         if (!winnersFound) {
@@ -632,6 +701,11 @@ async function updateWinnersList() {
         
     } catch (error) {
         console.error("Error updating winners list:", error);
+        winnersList.innerHTML = `
+            <div class="text-center text-danger">
+                Error loading winners
+            </div>
+        `;
     }
 }
 
@@ -693,7 +767,7 @@ function listenForEvents() {
                 showNotification(`Winner selected! ${winner} won ${amount} ETH!`, 'success');
                 updateContractInfo();
                 updatePlayersList();
-                updateWinnersList();
+                updateWinnersList(); // Ensure winners list is updated
                 checkUserParticipation();
                 if (isOwner) updateAdminPanelUI();
                 lotteryEvents.push(event);
@@ -717,8 +791,10 @@ function listenForEvents() {
                 updateContractInfo();
                 if (isOwner) updateAdminPanelUI();
                 lotteryEvents.push(event);
-            })            .on('error', error => console.error("Lottery closed event error:", error));
-          // Listen for entry fees updated events
+            })
+            .on('error', error => console.error("Lottery closed event error:", error));
+        
+        // Listen for entry fees updated events
         lotteryContract.events.EntryFeesUpdated({ fromBlock: 'latest' })
             .on('data', event => {
                 const newFee = web3.utils.fromWei(event.returnValues.newFee, 'ether');
@@ -744,7 +820,9 @@ function listenForEvents() {
             }
             
             lotteryEvents = events;
-            console.log("Past events:", events);
+            console.log("Past events loaded:", events.length, "events");
+            // Update winners list after loading past events
+            updateWinnersList();
         });
         
     } catch (error) {
@@ -1061,30 +1139,64 @@ function setupEventListeners() {
     if (refreshBtn) {
         refreshBtn.addEventListener('click', async () => {
             console.log("Manual refresh requested...");
-            // Show temporary loading indicator during refresh
+            
+            // Prevent multiple clicks
+            if (refreshBtn.disabled) {
+                console.log("Refresh already in progress, ignoring click");
+                return;
+            }
+            
+            // Show loading state
             refreshBtn.textContent = "Refreshing...";
             refreshBtn.disabled = true;
             
-            // Stop auto-refresh temporarily to avoid conflicts
+            // Stop auto-refresh temporarily
             stopAutoRefresh();
             
-            // Attempt to update all contract information
-            const success = await updateContractInfo();
-            await updatePlayersList();
-            await updateWinnersList();
-            await checkUserParticipation();
-            
-            // Reset button state
-            refreshBtn.textContent = "Refresh Status";
-            refreshBtn.disabled = false;
-            
-            // Restart auto-refresh
-            startAutoRefresh();
-            
-            if (success) {
-                showNotification('Information refreshed!', 'info');
-            } else {
-                showNotification('Could not refresh some information. Please check your connection.', 'warning');
+            try {
+                // Clear existing events cache
+                lotteryEvents = [];
+                
+                // Update contract information
+                console.log("Updating contract info...");
+                const contractInfoSuccess = await updateContractInfo();
+                
+                // Update players list
+                console.log("Updating players list...");
+                await updatePlayersList();
+                
+                // Update winners list
+                console.log("Updating winners list...");
+                await updateWinnersList();
+                
+                // Update user participation status if connected
+                if (accounts && accounts.length > 0) {
+                    console.log("Updating user participation...");
+                    await checkUserParticipation();
+                }
+                
+                // Update admin panel if owner
+                if (isOwner) {
+                    console.log("Updating admin panel...");
+                    await updateAdminPanelUI();
+                }
+                
+                // Show success message
+                if (contractInfoSuccess) {
+                    showNotification('Information refreshed successfully!', 'success');
+                } else {
+                    showNotification('Some information could not be refreshed. Please check your connection.', 'warning');
+                }
+            } catch (error) {
+                console.error("Error during manual refresh:", error);
+                showNotification('Error refreshing information: ' + error.message, 'error');
+            } finally {
+                // Reset button state
+                refreshBtn.textContent = "Refresh Status";
+                refreshBtn.disabled = false;
+                
+                // Restart auto-refresh
+                startAutoRefresh();
             }
         });
     }
@@ -1575,16 +1687,25 @@ function startAutoRefresh() {
                 adminRefreshIndicator.classList.add('spin');
             }
             
-            await updateContractInfo();
-            await updatePlayersList();
-            await updateWinnersList();
-            if (accounts && accounts.length > 0) {
-                await checkUserParticipation();
-            }
-            
-            // Update admin panel UI if user is owner
-            if (isOwner) {
-                await updateAdminPanelUI();
+            try {
+                // Load past events first
+                await loadPastEvents();
+                
+                // Then update all information
+                await updateContractInfo();
+                await updatePlayersList();
+                await updateWinnersList();
+                if (accounts && accounts.length > 0) {
+                    await checkUserParticipation();
+                }
+                
+                // Update admin panel UI if user is owner
+                if (isOwner) {
+                    console.log("Updating admin panel...");
+                    await updateAdminPanelUI();
+                }
+            } catch (error) {
+                console.error("Error during auto-refresh:", error);
             }
             
             // Hide refresh indicator after short delay
@@ -1808,5 +1929,76 @@ function updateConnectButtonForMultipleAccounts(availableAccounts) {
         });
     }
 }
+
+async function updateUserStatus() {
+    if (!web3 || !lotteryContract || !currentAccount) {
+        userStatus.innerHTML = '<div class="alert alert-light">Connect your wallet to participate.</div>';
+        return;
+    }
+
+    try {
+        // Check if user has already entered this round
+        const hasEntered = await lotteryContract.methods.hasEntered(currentAccount).call();
+        
+        if (hasEntered) {
+            userStatus.innerHTML = '<div class="alert alert-warning">You have already entered this lottery round.</div>';
+            enterBtn.disabled = true;
+            enterBtn.textContent = 'Already Entered';
+        } else {
+            userStatus.innerHTML = '<div class="alert alert-light">You are not yet participating in this round.</div>';
+            enterBtn.disabled = false;
+            enterBtn.textContent = 'Enter Lottery';
+        }
+    } catch (error) {
+        console.error('Error updating user status:', error);
+        userStatus.innerHTML = '<div class="alert alert-danger">Error checking participation status.</div>';
+    }
+}
+
+async function enterLottery() {
+    if (!web3 || !lotteryContract || !currentAccount) {
+        showNotification('Please connect your wallet first.', 'warning');
+        return;
+    }
+
+    try {
+        const entryFee = await lotteryContract.methods.entryFee().call();
+        const lotteryOpen = await lotteryContract.methods.lotteryOpen().call();
+
+        if (!lotteryOpen) {
+            showNotification('The lottery is currently closed.', 'warning');
+            return;
+        }
+
+        // Check if user has already entered
+        const hasEntered = await lotteryContract.methods.hasEntered(currentAccount).call();
+        if (hasEntered) {
+            showNotification('You have already entered this lottery round.', 'warning');
+            return;
+        }
+
+        const tx = await lotteryContract.methods.enterLottery().send({
+            from: currentAccount,
+            value: entryFee,
+            gas: 300000
+        });
+
+        showNotification('Successfully entered the lottery!', 'success');
+        updateContractInfo();
+        updatePlayersList();
+        updateUserStatus();
+    } catch (error) {
+        console.error('Error entering lottery:', error);
+        if (error.message.includes('already entered')) {
+            showNotification('You have already entered this lottery round.', 'warning');
+        } else {
+            showNotification('Error entering lottery. Please try again.', 'danger');
+        }
+    }
+}
+
+
+
+
 
 

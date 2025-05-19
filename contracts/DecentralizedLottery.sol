@@ -13,6 +13,9 @@ contract DecentralizedLottery {
     // Track admin's accumulated fees
     uint public adminFees;
     
+    // Track which addresses have entered the current lottery
+    mapping(address => bool) public hasEntered;
+    
     event PlayerEntered(address indexed player, uint amount, uint lotteryId);
     event WinnerSelected(address indexed winner, uint amount, uint lotteryId);
     event LotteryOpened(uint lotteryId, uint timestamp);
@@ -52,6 +55,10 @@ contract DecentralizedLottery {
     function enterLottery() public payable {
         require(lotteryOpen, "Lottery is not open");
         require(msg.value >= entryFee, "Insufficient entry fee");
+        require(!hasEntered[msg.sender], "You have already entered this lottery round");
+        
+        // Mark address as having entered
+        hasEntered[msg.sender] = true;
         
         // Add player to the lottery
         players.push(msg.sender);
@@ -102,10 +109,16 @@ contract DecentralizedLottery {
         (bool success, ) = payable(winner).call{value: prize, gas: 30000}("");
         require(success, "Failed to transfer prize to winner");
         
+        // Clear the hasEntered mapping for all players before resetting the array
+        for (uint i = 0; i < players.length; i++) {
+            hasEntered[players[i]] = false;
+        }
+        
         // Reset for next lottery
         players = new address[](0);
         lotteryId++;
         lotteryOpen = true;
+        
         emit LotteryOpened(lotteryId, block.timestamp);
     }
     
