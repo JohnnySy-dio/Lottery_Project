@@ -20,12 +20,50 @@ class UIController {
         this.participantCount = document.getElementById('participantCount');
         this.prizePool = document.getElementById('prizePool');
         this.winnerDisplay = document.getElementById('winner');
+        this.minPlayers = document.getElementById('minPlayers');
         
         // Loader elements
         this.loaders = document.querySelectorAll('.loading-indicator');
         
         // Admin elements
         this.adminActions = document.getElementById('adminActions');
+    }
+    
+    // Display contract address from CONFIG
+    displayContractAddress() {
+        if (window.CONFIG) {
+            const address = CONFIG.CONTRACT_ADDRESS;
+            
+            // Update footer contract address
+            const footerAddressElement = document.getElementById('footerContractAddress');
+            if (footerAddressElement) {
+                footerAddressElement.textContent = address;
+                // Make it selectable for easy copying
+                footerAddressElement.style.cursor = 'pointer';
+                footerAddressElement.title = 'Click to copy address';
+                footerAddressElement.addEventListener('click', () => {
+                    navigator.clipboard.writeText(address)
+                        .then(() => {
+                            this.showNotification("Contract address copied to clipboard", "success");
+                        })
+                        .catch(err => {
+                            console.error('Failed to copy address: ', err);
+                        });
+                });
+            }
+            
+            // Update footer Etherscan link
+            const footerEtherscanLink = document.getElementById('footerEtherscanLink');
+            if (footerEtherscanLink) {
+                footerEtherscanLink.href = `https://sepolia.etherscan.io/address/${address}`;
+            }
+            
+            // Update navbar Etherscan link
+            const etherscanLink = document.getElementById('etherscanLink');
+            if (etherscanLink) {
+                etherscanLink.href = `https://sepolia.etherscan.io/address/${address}`;
+            }
+        }
     }
     
     // Display connection status
@@ -102,10 +140,10 @@ class UIController {
             this.currentLotteryId.textContent = lotteryInfo.id || 'N/A';
         }
         
-        // Update lottery status
+        // Update lottery status - only Open or Closed
         if (this.lotteryStatus) {
-            const statusText = lotteryInfo.completed ? 'Completed' : (lotteryInfo.isOpen ? 'Open' : 'Closed');
-            const statusClass = lotteryInfo.completed ? 'bg-secondary' : (lotteryInfo.isOpen ? 'bg-success' : 'bg-warning');
+            const statusText = lotteryInfo.isOpen ? 'Open' : 'Closed';
+            const statusClass = lotteryInfo.isOpen ? 'bg-success' : 'bg-warning';
             this.lotteryStatus.textContent = statusText;
             this.lotteryStatus.className = `badge ${statusClass}`;
         }
@@ -133,15 +171,20 @@ class UIController {
             this.participantCount.textContent = lotteryInfo.playerCount || '0';
         }
         
+        // Update minimum participants
+        if (this.minPlayers) {
+            this.minPlayers.textContent = lotteryInfo.minPlayers || '-';
+        }
+        
         // Update winner
         if (this.winnerDisplay) {
-            if (lotteryInfo.completed && lotteryInfo.winner && lotteryInfo.winner !== '0x0000000000000000000000000000000000000000') {
+            if (lotteryInfo.hasWinner && lotteryInfo.winner && lotteryInfo.winner !== '0x0000000000000000000000000000000000000000') {
                 const shortenedWinner = `${lotteryInfo.winner.substring(0, 6)}...${lotteryInfo.winner.substring(lotteryInfo.winner.length - 4)}`;
                 this.winnerDisplay.textContent = shortenedWinner;
                 this.winnerDisplay.parentElement.style.display = 'block';
             } else {
                 this.winnerDisplay.textContent = 'No winner yet';
-                this.winnerDisplay.parentElement.style.display = lotteryInfo.completed ? 'block' : 'none';
+                this.winnerDisplay.parentElement.style.display = lotteryInfo.hasWinner ? 'block' : 'none';
             }
         }
     }
@@ -208,6 +251,52 @@ class UIController {
         }
     }
     
+    // Update admin button states based on lottery state
+    updateAdminButtons(lotteryInfo) {
+        if (!lotteryInfo) return;
+        
+        const startLotteryBtn = document.getElementById('startLotteryBtn');
+        const pickWinnerBtn = document.getElementById('pickWinnerBtn');
+        const closeLotteryBtn = document.getElementById('closeLotteryBtn');
+        
+        if (!startLotteryBtn || !pickWinnerBtn || !closeLotteryBtn) return;
+        
+        // Start lottery button: Enable only if lottery is closed OR if lottery is open with no participants
+        const canStartNewLottery = !lotteryInfo.isOpen || 
+                                   (lotteryInfo.isOpen && parseInt(lotteryInfo.playerCount) === 0);
+        
+        startLotteryBtn.disabled = !canStartNewLottery;
+        startLotteryBtn.title = canStartNewLottery ? 
+            "Start a new lottery" : 
+            "Cannot start a new lottery while current lottery is open with participants";
+        
+        // Close lottery button: Enable only if lottery is open
+        const canCloseLottery = lotteryInfo.isOpen;
+        
+        closeLotteryBtn.disabled = !canCloseLottery;
+        closeLotteryBtn.title = canCloseLottery ? 
+            "Temporarily close the lottery" : 
+            "Lottery is already closed";
+        
+        // Pick winner button: Enable only if lottery is open and has enough participants
+        const minPlayers = parseInt(lotteryInfo.minPlayers || "3");
+        const currentPlayers = parseInt(lotteryInfo.playerCount || "0");
+        const canPickWinner = lotteryInfo.isOpen && currentPlayers >= minPlayers;
+        
+        pickWinnerBtn.disabled = !canPickWinner;
+        
+        let pickWinnerTitle = "Select a winner for this lottery";
+        if (!lotteryInfo.isOpen) {
+            pickWinnerTitle = "Cannot pick a winner: Lottery is not open";
+        } else if (currentPlayers === 0) {
+            pickWinnerTitle = "Cannot pick a winner: No participants";
+        } else if (currentPlayers < minPlayers) {
+            pickWinnerTitle = `Cannot pick a winner: Need at least ${minPlayers} participants (currently ${currentPlayers})`;
+        }
+        
+        pickWinnerBtn.title = pickWinnerTitle;
+    }
+    
     // Show loading state
     showLoading() {
         this.loaders.forEach(loader => {
@@ -223,22 +312,34 @@ class UIController {
     }
     
     // Update join button state
-    updateJoinButton(canJoin, hasJoined, lotteryCompleted) {
+    updateJoinButton(canJoin, hasJoined, isLotteryOpen) {
         const joinButton = document.getElementById('joinLotteryBtn');
         if (!joinButton) return;
         
-        if (lotteryCompleted) {
+        if (!isLotteryOpen) {
+            // If lottery is closed, disable button
             joinButton.disabled = true;
-            joinButton.textContent = 'Lottery Ended';
+            joinButton.textContent = 'Lottery Closed';
+            joinButton.classList.add('btn-secondary');
+            joinButton.classList.remove('btn-primary', 'pulse');
         } else if (hasJoined) {
+            // If user has joined, show but disable button
             joinButton.disabled = true;
             joinButton.textContent = 'Already Joined';
+            joinButton.classList.add('btn-success');
+            joinButton.classList.remove('btn-primary', 'pulse');
         } else if (!canJoin) {
+            // If user can't join (not connected), disable button
             joinButton.disabled = true;
             joinButton.textContent = 'Connect Wallet to Join';
+            joinButton.classList.add('btn-secondary');
+            joinButton.classList.remove('btn-primary', 'pulse');
         } else {
+            // User can join and hasn't joined yet
             joinButton.disabled = false;
             joinButton.textContent = 'Join Lottery';
+            joinButton.classList.add('btn-primary', 'pulse');
+            joinButton.classList.remove('btn-secondary', 'btn-success');
         }
     }
     

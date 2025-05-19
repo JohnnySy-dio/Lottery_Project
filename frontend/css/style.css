@@ -225,6 +225,21 @@ footer a:hover {
     text-decoration: underline;
 }
 
+#footerContractAddress {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    background-color: rgba(108, 92, 231, 0.1);
+    border-radius: 4px;
+    font-family: monospace;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+#footerContractAddress:hover {
+    background-color: rgba(108, 92, 231, 0.2);
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .hero-section {

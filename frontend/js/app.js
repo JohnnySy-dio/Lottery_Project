@@ -99,13 +99,18 @@ class App {
             this.uiController.updateJoinButton(
                 this.web3Provider.isWriteConnected,
                 this.hasJoined,
-                this.currentLotteryInfo.completed
+                this.currentLotteryInfo.isOpen
             );
             
             // Check if current user is owner and show admin controls
             if (this.web3Provider.userAccount) {
                 const isOwner = await this.contractInteraction.isOwner();
                 this.uiController.showAdminControls(isOwner);
+                
+                // If owner, update admin button states based on lottery state
+                if (isOwner) {
+                    this.uiController.updateAdminButtons(this.currentLotteryInfo);
+                }
             } else {
                 this.uiController.showAdminControls(false);
             }
@@ -127,6 +132,22 @@ class App {
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
+    // Make sure CONFIG is loaded and accessible before using it
+    if (typeof CONFIG === 'undefined') {
+        console.error('CONFIG object is not available. Make sure config.js is loaded before app.js');
+    } else {
+        console.log('CONFIG object loaded, contract address:', CONFIG.CONTRACT_ADDRESS);
+        
+        // Set the footer contract address with the value from CONFIG
+        const footerAddressElement = document.getElementById('footerContractAddress');
+        if (footerAddressElement) {
+            footerAddressElement.innerHTML = CONFIG.CONTRACT_ADDRESS;
+            console.log('Footer contract address set to:', CONFIG.CONTRACT_ADDRESS);
+        } else {
+            console.error('Footer contract address element not found');
+        }
+    }
+    
     const app = new App();
     await app.init();
 }); 

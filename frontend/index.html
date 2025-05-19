@@ -39,7 +39,7 @@
                         <a class="nav-link active" aria-current="page" href="#">Home</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="https://sepolia.etherscan.io/address/0xDD515FbeA6d44EaFfc2bd28E521e92991b7F12C0" target="_blank" rel="noopener">
+                        <a class="nav-link" id="etherscanLink" href="#" target="_blank" rel="noopener">
                             <i class="bi bi-box-arrow-up-right"></i>
                             View on Etherscan
                         </a>
@@ -96,6 +96,7 @@
                                 <div class="info-item-label">Lottery ID</div>
                                 <div class="info-item-value" id="currentLotteryId">-</div>
                             </div>
+                            
                             <div class="info-item">
                                 <div class="info-item-label">Status</div>
                                 <div><span class="badge bg-secondary" id="lotteryStatus">Unknown</span></div>
@@ -107,6 +108,10 @@
                             <div class="info-item">
                                 <div class="info-item-label">Participants</div>
                                 <div class="info-item-value" id="participantCount">0</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-item-label">Min. Participants</div>
+                                <div class="info-item-value" id="minPlayers">-</div>
                             </div>
                             <div class="info-item">
                                 <div class="info-item-label">Prize Pool</div>
@@ -138,10 +143,15 @@
                         </h5>
                     </div>
                     <div class="card-body">
-                        <div class="d-flex justify-content-center gap-3">
+                        <div class="d-flex justify-content-center gap-3 mb-3">
                             <button id="startLotteryBtn" class="btn btn-success">
                                 <i class="bi bi-plus-circle me-2"></i>
                                 Start New Lottery
+                                <span class="loading-indicator spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
+                            </button>
+                            <button id="closeLotteryBtn" class="btn btn-danger">
+                                <i class="bi bi-x-circle me-2"></i>
+                                Close Lottery
                                 <span class="loading-indicator spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
                             </button>
                             <button id="pickWinnerBtn" class="btn btn-warning">
@@ -149,6 +159,78 @@
                                 Pick Winner
                                 <span class="loading-indicator spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
                             </button>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="row mt-3">
+                            <!-- Set Entry Fee -->
+                            <div class="col-md-4 mb-3">
+                                <div class="card">
+                                    <div class="card-header bg-light">
+                                        <h6 class="mb-0">
+                                            <i class="bi bi-currency-exchange me-2"></i>
+                                            Set Entry Fee
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="input-group mb-3">
+                                            <input type="number" id="newEntryFeeInput" class="form-control" placeholder="Fee in ETH" min="0.0001" step="0.0001">
+                                            <span class="input-group-text">ETH</span>
+                                        </div>
+                                        <button id="setEntryFeeBtn" class="btn btn-primary w-100">
+                                            <i class="bi bi-check-circle me-2"></i>
+                                            Update Fee
+                                            <span class="loading-indicator spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Set Min Players -->
+                            <div class="col-md-4 mb-3">
+                                <div class="card">
+                                    <div class="card-header bg-light">
+                                        <h6 class="mb-0">
+                                            <i class="bi bi-people-fill me-2"></i>
+                                            Set Min Players
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="input-group mb-3">
+                                            <input type="number" id="minPlayersInput" class="form-control" placeholder="Min players" min="2" step="1">
+                                            <span class="input-group-text">Players</span>
+                                        </div>
+                                        <button id="setMinPlayersBtn" class="btn btn-primary w-100">
+                                            <i class="bi bi-check-circle me-2"></i>
+                                            Update Min Players
+                                            <span class="loading-indicator spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Withdraw Admin Fees -->
+                            <div class="col-md-4 mb-3">
+                                <div class="card">
+                                    <div class="card-header bg-light">
+                                        <h6 class="mb-0">
+                                            <i class="bi bi-cash-coin me-2"></i>
+                                            Admin Fees
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="card-text mb-3">Admin's accumulated fees are sent directly with each entry.</p>
+                                        <div class="d-grid">
+                                            <button id="withdrawFeesBtn" class="btn btn-info">
+                                                <i class="bi bi-cash-stack me-2"></i>
+                                                Withdraw Admin Fees
+                                                <span class="loading-indicator spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -202,7 +284,7 @@
                     <h5>Links</h5>
                     <ul class="list-unstyled">
                         <li><a href="#">Home</a></li>
-                        <li><a href="https://sepolia.etherscan.io/address/0xDD515FbeA6d44EaFfc2bd28E521e92991b7F12C0" target="_blank" rel="noopener">Etherscan</a></li>
+                        <li><a href="#" id="footerEtherscanLink" target="_blank" rel="noopener">Etherscan</a></li>
                     </ul>
                 </div>
                 <div class="col-md-3">
@@ -215,7 +297,7 @@
             </div>
             <hr>
             <p class="text-center mb-0">
-                &copy; 2025 Decentralized Ethereum Lottery. Contract Address: 0xDD515FbeA6d44EaFfc2bd28E521e92991b7F12C0
+                &copy; 2025 Decentralized Ethereum Lottery. Contract Address: <span id="footerContractAddress" class="text-primary fw-bold" style="user-select: all;"></span>
             </p>
         </div>
     </footer>
@@ -236,5 +318,22 @@
     <script src="js/ui-controller.js"></script>
     <script src="js/event-handlers.js"></script>
     <script src="js/app.js"></script>
+    
+    <!-- Debug script to immediately set contract address -->
+    <script>
+        // Directly set the contract address from CONFIG
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set contract address in footer
+            document.getElementById('footerContractAddress').textContent = CONFIG.CONTRACT_ADDRESS;
+            
+            // Set Etherscan links
+            const etherscanUrl = 'https://sepolia.etherscan.io/address/' + CONFIG.CONTRACT_ADDRESS;
+            
+            document.getElementById('etherscanLink').href = etherscanUrl;
+            document.getElementById('footerEtherscanLink').href = etherscanUrl;
+            
+            console.log('Contract address set to:', CONFIG.CONTRACT_ADDRESS);
+        });
+    </script>
 </body>
 </html> 

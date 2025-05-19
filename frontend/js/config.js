@@ -5,7 +5,7 @@
 
 const CONFIG = {
     // Contract settings
-    CONTRACT_ADDRESS: "0xFdC2f4574F069EC5801E64BFb6C672d0FE997C2C",
+    CONTRACT_ADDRESS: "0x3a1c2615aD402B4C706780374F9C7746125d7C24",
     NETWORK_ID: 11155111,  // Sepolia testnet
     CHAIN_ID: "0xaa36a7",  // Sepolia chain ID in hex for MetaMask
     
@@ -29,6 +29,7 @@ const CONFIG = {
         {"inputs":[],"name":"minPlayers","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
         {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"hasEntered","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
         {"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"lotteryHistory","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+        {"inputs":[],"name":"adminFees","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
         
         // Write functions
         {"inputs":[],"name":"enterLottery","outputs":[],"stateMutability":"payable","type":"function"},
@@ -37,6 +38,7 @@ const CONFIG = {
         {"inputs":[],"name":"pickWinner","outputs":[],"stateMutability":"nonpayable","type":"function"},
         {"inputs":[{"internalType":"uint256","name":"_fee","type":"uint256"}],"name":"setEntryFee","outputs":[],"stateMutability":"nonpayable","type":"function"},
         {"inputs":[],"name":"withdrawAdminFees","outputs":[],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[{"internalType":"uint256","name":"_minPlayers","type":"uint256"}],"name":"setMinPlayers","outputs":[],"stateMutability":"nonpayable","type":"function"},
         
         // Events
         {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"player","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"lotteryId","type":"uint256"}],"name":"PlayerEntered","type":"event"},

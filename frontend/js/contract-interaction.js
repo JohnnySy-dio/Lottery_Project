@@ -48,12 +48,13 @@ class ContractInteraction {
         try {
             // The actual contract doesn't have a getLottery function
             // Create a composite object from multiple contract calls
-            const [isLotteryOpen, winner, playerCount, balance, entryFee] = await Promise.all([
+            const [isLotteryOpen, winner, playerCount, balance, entryFee, minPlayers] = await Promise.all([
                 this.getContract().methods.lotteryOpen().call(),
                 this.getContract().methods.lotteryHistory(lotteryId).call(),
                 this.getContract().methods.getPlayerCount().call(),
                 this.getContract().methods.getBalance().call(),
-                this.getContract().methods.entryFee().call()
+                this.getContract().methods.entryFee().call(),
+                this.getContract().methods.minPlayers().call()
             ]);
             
             // Check if this is a zero address (no winner yet)
@@ -65,11 +66,12 @@ class ContractInteraction {
                 endTime: 0,   // Not tracked in contract
                 winner: winner,
                 prize: balance, // Current balance
-                completed: !isLotteryOpen || hasWinner, // If not open or has winner
                 playerCount: playerCount,
                 balance: balance,
                 participants: [], // Will be populated by getParticipants
-                isOpen: isLotteryOpen
+                isOpen: isLotteryOpen,
+                minPlayers: minPlayers,
+                hasWinner: hasWinner
             };
         } catch (error) {
             console.error(`Failed to get lottery info for ID ${lotteryId}:`, error);
@@ -132,6 +134,18 @@ class ContractInteraction {
         }
 
         try {
+            // Check if lottery is open
+            const isOpen = await this.getContract().methods.lotteryOpen().call();
+            if (!isOpen) {
+                throw new Error("Lottery is currently closed. Please wait until it reopens.");
+            }
+            
+            // Check if user has already entered
+            const hasEntered = await this.getContract().methods.hasEntered(this.web3Provider.userAccount).call();
+            if (hasEntered) {
+                throw new Error("You have already entered this lottery round.");
+            }
+            
             const entryFee = await this.getEntryFee();
             
             if (this.statusCallbacks.onPending) {
@@ -157,6 +171,16 @@ class ContractInteraction {
         }
 
         try {
+            // Check if current lottery is still open
+            const isOpen = await this.getContract().methods.lotteryOpen().call();
+            if (isOpen) {
+                // If open, check if there are participants
+                const playerCount = await this.getContract().methods.getPlayerCount().call();
+                if (parseInt(playerCount) > 0) {
+                    throw new Error("Cannot start a new lottery while current lottery is open with participants. Please close the current lottery and pick a winner first.");
+                }
+            }
+            
             if (this.statusCallbacks.onPending) {
                 this.statusCallbacks.onPending("Starting new lottery...");
             }
@@ -180,6 +204,26 @@ class ContractInteraction {
         }
 
         try {
+            // Check if lottery is open
+            const isOpen = await this.getContract().methods.lotteryOpen().call();
+            if (!isOpen) {
+                throw new Error("Cannot pick a winner: The lottery is not open.");
+            }
+            
+            // Check if there are enough participants
+            const [playerCount, minPlayers] = await Promise.all([
+                this.getContract().methods.getPlayerCount().call(),
+                this.getContract().methods.minPlayers().call()
+            ]);
+            
+            if (parseInt(playerCount) === 0) {
+                throw new Error("Cannot pick a winner: There are no participants in the lottery.");
+            }
+            
+            if (parseInt(playerCount) < parseInt(minPlayers)) {
+                throw new Error(`Cannot pick a winner: Need at least ${minPlayers} participants (currently ${playerCount}).`);
+            }
+            
             if (this.statusCallbacks.onPending) {
                 this.statusCallbacks.onPending("Picking winner...");
             }
@@ -197,6 +241,114 @@ class ContractInteraction {
             console.error("Failed to pick winner:", error);
             if (this.statusCallbacks.onError) {
                 this.statusCallbacks.onError("Failed to pick winner: " + error.message);
+            }
+            throw error;
+        }
+    }
+
+    // Set Entry Fee (owner only)
+    async setEntryFee(feeInEth) {
+        if (!this.web3Provider.isWriteConnected) {
+            throw new Error("MetaMask not connected. Please connect your wallet to set the entry fee.");
+        }
+
+        try {
+            if (this.statusCallbacks.onPending) {
+                this.statusCallbacks.onPending("Setting new entry fee...");
+            }
+            
+            // Convert ETH to Wei
+            const web3 = this.web3Provider.getWeb3();
+            const feeInWei = web3.utils.toWei(feeInEth.toString(), 'ether');
+            
+            // Call the contract method
+            const tx = this.getContract(true).methods.setEntryFee(feeInWei);
+            return this._sendTransaction(tx, "0");
+        } catch (error) {
+            console.error("Failed to set entry fee:", error);
+            if (this.statusCallbacks.onError) {
+                this.statusCallbacks.onError("Failed to set entry fee: " + error.message);
+            }
+            throw error;
+        }
+    }
+    
+    // Set Min Players (owner only)
+    async setMinPlayers(minPlayers) {
+        if (!this.web3Provider.isWriteConnected) {
+            throw new Error("MetaMask not connected. Please connect your wallet to set minimum players.");
+        }
+
+        try {
+            if (this.statusCallbacks.onPending) {
+                this.statusCallbacks.onPending("Setting minimum players...");
+            }
+            
+            // Ensure minPlayers is a number
+            const minPlayersValue = parseInt(minPlayers);
+            if (isNaN(minPlayersValue) || minPlayersValue < 2) {
+                throw new Error("Minimum players must be at least 2");
+            }
+            
+            // Call the contract method
+            const tx = this.getContract(true).methods.setMinPlayers(minPlayersValue);
+            return this._sendTransaction(tx, "0");
+        } catch (error) {
+            console.error("Failed to set minimum players:", error);
+            if (this.statusCallbacks.onError) {
+                this.statusCallbacks.onError("Failed to set minimum players: " + error.message);
+            }
+            throw error;
+        }
+    }
+    
+    // Withdraw Admin Fees (owner only)
+    async withdrawAdminFees() {
+        if (!this.web3Provider.isWriteConnected) {
+            throw new Error("MetaMask not connected. Please connect your wallet to withdraw fees.");
+        }
+
+        try {
+            if (this.statusCallbacks.onPending) {
+                this.statusCallbacks.onPending("Withdrawing admin fees...");
+            }
+            
+            // Call the contract method
+            const tx = this.getContract(true).methods.withdrawAdminFees();
+            return this._sendTransaction(tx, "0");
+        } catch (error) {
+            console.error("Failed to withdraw admin fees:", error);
+            if (this.statusCallbacks.onError) {
+                this.statusCallbacks.onError("Failed to withdraw admin fees: " + error.message);
+            }
+            throw error;
+        }
+    }
+
+    // Close lottery temporarily (owner only)
+    async closeLottery() {
+        if (!this.web3Provider.isWriteConnected) {
+            throw new Error("MetaMask not connected. Please connect your wallet to close the lottery.");
+        }
+
+        try {
+            // Check if lottery is already closed
+            const isOpen = await this.getContract().methods.lotteryOpen().call();
+            if (!isOpen) {
+                throw new Error("Lottery is already closed.");
+            }
+            
+            if (this.statusCallbacks.onPending) {
+                this.statusCallbacks.onPending("Closing lottery temporarily...");
+            }
+            
+            // Call the contract method to close the lottery
+            const tx = this.getContract(true).methods.closeLottery();
+            return this._sendTransaction(tx, "0");
+        } catch (error) {
+            console.error("Failed to close lottery:", error);
+            if (this.statusCallbacks.onError) {
+                this.statusCallbacks.onError("Failed to close lottery: " + error.message);
             }
             throw error;
         }
