@@ -64,7 +64,7 @@ The lottery smart contract is deployed on the Sepolia testnet at:
 
 ## Live Demo
 
-Visit the live demo at: [https://your-username.github.io/ethereum-lottery/](https://your-username.github.io/ethereum-lottery/)
+Visit the live demo at: [https://johnnysy-dio.github.io/Lottery_Project/frontend/index.html](https://johnnysy-dio.github.io/Lottery_Project/frontend/index.html)
 
 ## Installation
 
