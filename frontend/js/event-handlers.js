@@ -927,6 +927,11 @@ class EventHandlers {
                         joinButton.classList.remove('btn-success');
                     }
                     
+                    // Check if the selected account is the owner and update admin controls
+                    const isOwner = await this.contractInteraction.isOwner();
+                    console.log("Selected Ganache account is owner:", isOwner);
+                    this.uiController.showAdminControls(isOwner);
+                    
                     // Force a complete refresh of data for the new account
                     await this.app.refreshData(true);
                 } catch (error) {

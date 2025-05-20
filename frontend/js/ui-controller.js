@@ -261,6 +261,38 @@ class UIController {
         }
     }
     
+    // Update admin fees
+    updateAdminFees(fees) {
+        const adminFeesElement = document.getElementById('adminFeesAmount');
+        if (adminFeesElement && fees) {
+            try {
+                if (window.web3Instance && window.web3Instance.utils) {
+                    const ethValue = window.web3Instance.utils.fromWei(fees.toString(), 'ether');
+                    adminFeesElement.textContent = `${parseFloat(ethValue).toFixed(4)} ETH`;
+                } else {
+                    console.warn("web3Instance not available for fromWei conversion in admin fees, falling back to manual.");
+                    const ethValue = Number(fees / 1e18).toFixed(4);
+                    adminFeesElement.textContent = `${ethValue} ETH`;
+                }
+                
+                // Update button state - disable button if no fees to withdraw
+                const withdrawFeesBtn = document.getElementById('withdrawFeesBtn');
+                if (withdrawFeesBtn) {
+                    withdrawFeesBtn.disabled = Number(fees) === 0;
+                    if (Number(fees) === 0) {
+                        withdrawFeesBtn.title = "No admin fees to withdraw";
+                    } else {
+                        withdrawFeesBtn.title = "Withdraw admin fees";
+                    }
+                }
+            } catch (error) {
+                console.error("Error converting admin fees:", error);
+                const ethValue = Number(fees / 1e18).toFixed(4);
+                adminFeesElement.textContent = `${ethValue} ETH`; // Fallback
+            }
+        }
+    }
+    
     // Populate participants table
     populateParticipantsTable(participants) {
         const participantsTable = document.getElementById('participantsTable');
@@ -298,8 +330,12 @@ class UIController {
     
     // Toggle admin controls visibility
     showAdminControls(isOwner) {
+        console.log("Updating admin controls visibility. Is owner:", isOwner);
         if (this.adminActions) {
             this.adminActions.style.display = isOwner ? 'block' : 'none';
+            console.log(`Admin controls are now ${isOwner ? 'visible' : 'hidden'}`);
+        } else {
+            console.warn("Admin actions element not found in DOM");
         }
     }
     

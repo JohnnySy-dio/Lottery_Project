@@ -81,6 +81,10 @@ class App {
             this.entryFee = await this.contractInteraction.getEntryFee();
             this.uiController.updateEntryFee(this.entryFee);
             
+            // Get admin fees
+            const adminFees = await this.contractInteraction.getAdminFees();
+            this.uiController.updateAdminFees(adminFees);
+            
             // Get current lottery ID
             this.currentLotteryId = await this.contractInteraction.getCurrentLotteryId();
             
@@ -135,7 +139,11 @@ class App {
             
             // Check if current user is owner and show admin controls
             if (this.web3Provider.userAccount) {
+                console.log("Checking if current account is owner...");
                 const isOwner = await this.contractInteraction.isOwner();
+                console.log("Owner check completed. Result:", isOwner);
+                
+                // Update UI based on owner status
                 this.uiController.showAdminControls(isOwner);
                 
                 // If owner, update admin button states based on lottery state
@@ -143,6 +151,7 @@ class App {
                     this.uiController.updateAdminButtons(this.currentLotteryInfo);
                 }
             } else {
+                console.log("No connected account, hiding admin controls");
                 this.uiController.showAdminControls(false);
             }
             

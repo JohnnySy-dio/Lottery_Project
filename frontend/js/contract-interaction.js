@@ -148,13 +148,35 @@ class ContractInteraction {
         }
     }
 
+    // Get admin fees
+    async getAdminFees() {
+        try {
+            return await this.getContract().methods.adminFees().call();
+        } catch (error) {
+            console.error("Failed to get admin fees:", error);
+            throw error;
+        }
+    }
+
     // Check if current user is owner
     async isOwner() {
         try {
-            if (!this.web3Provider.userAccount) return false;
+            if (!this.web3Provider.userAccount) {
+                console.log("No user account available, not owner");
+                return false;
+            }
             
             const owner = await this.getContract().methods.owner().call();
-            return owner.toLowerCase() === this.web3Provider.userAccount.toLowerCase();
+            console.log("Contract owner:", owner);
+            console.log("Current user:", this.web3Provider.userAccount);
+            
+            // Ensure both addresses are normalized to lowercase for comparison
+            const normalizedOwner = owner.toLowerCase();
+            const normalizedUser = this.web3Provider.userAccount.toLowerCase();
+            const isOwner = normalizedOwner === normalizedUser;
+            
+            console.log(`Is current user owner? ${isOwner}`);
+            return isOwner;
         } catch (error) {
             console.error("Failed to check if user is owner:", error);
             return false;

@@ -39,7 +39,7 @@ contract DecentralizedLottery {
     }
 
     function getBalance() public view returns (uint) {
-        return address(this).balance;
+        return address(this).balance-adminFees;
     }
 
     function getPlayerCount() public view returns (uint) {
@@ -69,11 +69,8 @@ contract DecentralizedLottery {
         // Split the entry fee: 50% to admin, 50% to prize pool
         uint adminShare = msg.value / 2;
 
-        // Transfer admin's share directly to owner
-        (bool success, ) = payable(owner).call{value: adminShare, gas: 30000}(
-            ""
-        );
-        require(success, "Failed to transfer admin share");
+        // Accumulate admin's share instead of sending directly
+        adminFees += adminShare;
 
         // The remaining amount stays in the contract for the prize pool
 
