@@ -9,7 +9,7 @@ const CONFIG = {
         // Sepolia testnet
         "0xaa36a7": "0xa9684d2C0Da71d1F3107cf9d45CcD57e5a528C30",
         // Ganache local
-        "0x539": "0x672ced8E1B1fF58b34406410e221BC6220167cFf",  // Will be updated after local deployment
+        "0x539": "0x557bC432D9D2BcbE16CeB1202C9Bd8236410A424",  // Will be updated after local deployment
         // Add more networks as needed
     },
     
