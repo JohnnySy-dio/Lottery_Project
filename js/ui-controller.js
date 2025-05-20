@@ -10,6 +10,8 @@ class UIController {
         
         // User info elements
         this.userAccountDisplay = document.getElementById('userAccount');
+        this.userBalanceDisplay = document.getElementById('userBalance');
+        this.userFullAddressDisplay = document.getElementById('userFullAddress');
         this.networkDisplay = document.getElementById('networkName');
         this.connectionStatus = document.getElementById('connectionStatus');
         
@@ -67,7 +69,7 @@ class UIController {
     }
     
     // Display connection status
-    updateConnectionStatus(isConnected, account = null) {
+    updateConnectionStatus(isConnected, account = null, balance = null) {
         if (this.connectionStatus) {
             if (isConnected && account) {
                 this.connectionStatus.textContent = 'Connected';
@@ -76,6 +78,28 @@ class UIController {
                 if (this.userAccountDisplay) {
                     const shortenedAccount = `${account.substring(0, 6)}...${account.substring(account.length - 4)}`;
                     this.userAccountDisplay.textContent = shortenedAccount;
+                    
+                    // Setup click listener to toggle full address display
+                    if (!this.userAccountDisplay.hasClickListener) {
+                        this.userAccountDisplay.addEventListener('click', () => {
+                            if (this.userFullAddressDisplay) {
+                                this.userFullAddressDisplay.classList.toggle('d-none');
+                            }
+                        });
+                        this.userAccountDisplay.hasClickListener = true;
+                    }
+                    
+                    // Show full address
+                    if (this.userFullAddressDisplay) {
+                        this.userFullAddressDisplay.textContent = account;
+                        this.userFullAddressDisplay.classList.add('d-none'); // Hidden by default
+                    }
+                    
+                    // Show balance if available
+                    if (this.userBalanceDisplay && balance) {
+                        this.userBalanceDisplay.textContent = `Balance: ${parseFloat(balance).toFixed(4)} ETH`;
+                        this.userBalanceDisplay.style.display = 'block';
+                    }
                 }
             } else {
                 this.connectionStatus.textContent = 'Not Connected';
@@ -84,15 +108,103 @@ class UIController {
                 if (this.userAccountDisplay) {
                     this.userAccountDisplay.textContent = 'Not connected';
                 }
+                
+                // Hide balance and address
+                if (this.userBalanceDisplay) {
+                    this.userBalanceDisplay.style.display = 'none';
+                }
+                
+                if (this.userFullAddressDisplay) {
+                    this.userFullAddressDisplay.classList.add('d-none');
+                }
             }
         }
     }
     
-    // Update network status
-    updateNetworkStatus(networkName, isCorrectNetwork) {
+    // Update network status display
+    updateNetworkStatus(networkName, isSupportedNetwork) {
+        console.log(`Updating network status: ${networkName} (supported: ${isSupportedNetwork})`);
         if (this.networkDisplay) {
             this.networkDisplay.textContent = networkName;
-            this.networkDisplay.className = isCorrectNetwork ? 'badge bg-success' : 'badge bg-warning';
+            
+            // Update connection status based on network support
+            if (this.connectionStatus) {
+                if (isSupportedNetwork) {
+                    this.connectionStatus.className = "badge bg-success";
+                    this.connectionStatus.textContent = "Connected";
+                } else {
+                    this.connectionStatus.className = "badge bg-warning";
+                    this.connectionStatus.textContent = "Unsupported Network";
+                }
+            }
+            
+            // If we're on Ganache local network, show additional info
+            if (networkName === "Ganache Local") {
+                // Check if we've already shown the message recently to avoid repetition
+                const lastShown = sessionStorage.getItem('ganacheMessageLastShown');
+                const now = new Date().getTime();
+                
+                if (!lastShown || (now - parseInt(lastShown)) > 10000) { // Only show every 10 seconds
+                    // Show Ganache-specific message
+                    this.showStatus(
+                        `<div class="alert alert-warning mb-0">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <strong>Local Development Mode</strong>: This Ganache network view is for local development testing only.
+                            Please ensure you are running this app on your local machine and have Ganache running at http://127.0.0.1:7545
+                        </div>`,
+                        'info'
+                    );
+                    
+                    // Remember that we showed the message
+                    sessionStorage.setItem('ganacheMessageLastShown', now.toString());
+                }
+                
+                // Show development mode badge
+                this.showDevelopmentModeBadge();
+            } else {
+                // Remove development mode badge if exists
+                this.removeDevelopmentModeBadge();
+            }
+            
+            console.log(`Network status updated to: ${networkName} (Supported: ${isSupportedNetwork})`);
+        } else {
+            console.warn("Network display element not found");
+        }
+    }
+    
+    // Show development mode badge
+    showDevelopmentModeBadge() {
+        // Remove any existing badge first
+        this.removeDevelopmentModeBadge();
+        
+        // Create development mode badge
+        const devBadge = document.createElement('div');
+        devBadge.id = 'developmentModeBadge';
+        devBadge.className = 'development-mode-badge';
+        devBadge.innerHTML = '<i class="bi bi-code-slash me-2"></i>LOCAL DEVELOPMENT MODE';
+        
+        // Add styles
+        devBadge.style.position = 'fixed';
+        devBadge.style.top = '60px';
+        devBadge.style.left = '0';
+        devBadge.style.right = '0';
+        devBadge.style.backgroundColor = '#FFC107';
+        devBadge.style.color = '#000';
+        devBadge.style.textAlign = 'center';
+        devBadge.style.padding = '5px';
+        devBadge.style.fontWeight = 'bold';
+        devBadge.style.zIndex = '1000';
+        devBadge.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+        
+        // Add to body
+        document.body.appendChild(devBadge);
+    }
+    
+    // Remove development mode badge
+    removeDevelopmentModeBadge() {
+        const existingBadge = document.getElementById('developmentModeBadge');
+        if (existingBadge) {
+            existingBadge.remove();
         }
     }
     
@@ -151,18 +263,18 @@ class UIController {
         // Update prize pool
         if (this.prizePool && lotteryInfo.balance) {
             try {
-                // Initialize Web3 locally if needed
-                const web3Instance = window.web3 || new Web3();
-                
-                // Convert from wei to ETH and format
-                const ethValue = web3Instance.utils.fromWei(lotteryInfo.balance.toString(), 'ether');
-                this.prizePool.textContent = `${parseFloat(ethValue).toFixed(4)} ETH`;
-                console.log("Updated prize pool:", ethValue, "ETH from", lotteryInfo.balance, "wei");
+                if (window.web3Instance && window.web3Instance.utils) {
+                    const ethValue = window.web3Instance.utils.fromWei(lotteryInfo.balance.toString(), 'ether');
+                    this.prizePool.textContent = `${parseFloat(ethValue).toFixed(4)} ETH`;
+                } else {
+                    console.warn("web3Instance not available for fromWei conversion in prize pool, falling back to manual.");
+                    const ethValue = Number(lotteryInfo.balance / 1e18).toFixed(4);
+                    this.prizePool.textContent = `${ethValue} ETH`;
+                }
             } catch (error) {
                 console.error("Error converting prize pool:", error);
-                // Fallback conversion
                 const ethValue = Number(lotteryInfo.balance / 1e18).toFixed(4);
-                this.prizePool.textContent = `${ethValue} ETH`;
+                this.prizePool.textContent = `${ethValue} ETH`; // Fallback
             }
         }
         
@@ -193,18 +305,50 @@ class UIController {
     updateEntryFee(fee) {
         if (this.entryFee && fee) {
             try {
-                // Initialize Web3 locally if needed
-                const web3Instance = window.web3 || new Web3();
-                
-                // Convert from wei to ETH and format
-                const ethValue = web3Instance.utils.fromWei(fee.toString(), 'ether');
-                this.entryFee.textContent = `${parseFloat(ethValue).toFixed(4)} ETH`;
-                console.log("Updated entry fee:", ethValue, "ETH from", fee, "wei");
+                if (window.web3Instance && window.web3Instance.utils) {
+                    const ethValue = window.web3Instance.utils.fromWei(fee.toString(), 'ether');
+                    this.entryFee.textContent = `${parseFloat(ethValue).toFixed(4)} ETH`;
+                } else {
+                    console.warn("web3Instance not available for fromWei conversion in entry fee, falling back to manual.");
+                    const ethValue = Number(fee / 1e18).toFixed(4);
+                    this.entryFee.textContent = `${ethValue} ETH`;
+                }
             } catch (error) {
                 console.error("Error converting entry fee:", error);
-                // Fallback conversion
                 const ethValue = Number(fee / 1e18).toFixed(4);
-                this.entryFee.textContent = `${ethValue} ETH`;
+                this.entryFee.textContent = `${ethValue} ETH`; // Fallback
+            }
+        }
+    }
+    
+    // Update admin fees
+    updateAdminFees(fees) {
+        const adminFeesElement = document.getElementById('adminFeesAmount');
+        if (adminFeesElement && fees) {
+            try {
+                if (window.web3Instance && window.web3Instance.utils) {
+                    const ethValue = window.web3Instance.utils.fromWei(fees.toString(), 'ether');
+                    adminFeesElement.textContent = `${parseFloat(ethValue).toFixed(4)} ETH`;
+                } else {
+                    console.warn("web3Instance not available for fromWei conversion in admin fees, falling back to manual.");
+                    const ethValue = Number(fees / 1e18).toFixed(4);
+                    adminFeesElement.textContent = `${ethValue} ETH`;
+                }
+                
+                // Update button state - disable button if no fees to withdraw
+                const withdrawFeesBtn = document.getElementById('withdrawFeesBtn');
+                if (withdrawFeesBtn) {
+                    withdrawFeesBtn.disabled = Number(fees) === 0;
+                    if (Number(fees) === 0) {
+                        withdrawFeesBtn.title = "No admin fees to withdraw";
+                    } else {
+                        withdrawFeesBtn.title = "Withdraw admin fees";
+                    }
+                }
+            } catch (error) {
+                console.error("Error converting admin fees:", error);
+                const ethValue = Number(fees / 1e18).toFixed(4);
+                adminFeesElement.textContent = `${ethValue} ETH`; // Fallback
             }
         }
     }
@@ -246,8 +390,12 @@ class UIController {
     
     // Toggle admin controls visibility
     showAdminControls(isOwner) {
+        console.log("Updating admin controls visibility. Is owner:", isOwner);
         if (this.adminActions) {
             this.adminActions.style.display = isOwner ? 'block' : 'none';
+            console.log(`Admin controls are now ${isOwner ? 'visible' : 'hidden'}`);
+        } else {
+            console.warn("Admin actions element not found in DOM");
         }
     }
     
