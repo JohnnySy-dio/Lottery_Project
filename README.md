@@ -23,7 +23,7 @@ A fully transparent lottery application running on the Ethereum Sepolia testnet.
 
 ## Technical Stack
 
-- **Frontend**: HTML5, CSS3, JavaScript
+- **Frontend**: HTML5, CSS3, JavaScript(Node.js)
 - **Libraries**: Web3.js, Bootstrap 5
 - **Blockchain**: Ethereum (Sepolia Testnet)
 - **Smart Contract**: Solidity
@@ -77,7 +77,6 @@ To run this project locally:
 5. Open your browser and navigate to `http://localhost:3000` to view the application
 6. Connect MetaMask to Sepolia testnet
 
-## Local Test 
 
 ## License
 This project is licensed under the MIT License

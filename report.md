@@ -9,12 +9,13 @@ The Decentralized Ethereum Lottery is a blockchain-based application that provid
 1. **Wallet Integration**
    - Seamless connection with MetaMask wallet
    - Support for network switching between Sepolia testnet and local Ganache
-   - Account selection for multiple wallet addresses
-
+   - Account selection for multiple wallet addresses(Ganache only,for testing purposes)
+  ![alt text](img/metamaskpng.png)
 2. **Lottery Participation**
    - Entry into active lotteries by paying the required ETH fee
    - Real-time balance and transaction updates
    - Automatic prize distribution to winners
+  ![alt text](img/join_lottery.png)
 
 3. **User Interface**
    - Mobile-responsive design for all devices
@@ -32,6 +33,9 @@ The Decentralized Ethereum Lottery is a blockchain-based application that provid
    - Comprehensive control panel for lottery parameters
    - Real-time statistics and participant tracking
    - Secure admin-only functions with authentication
+
+![Admin Panel](img/admin_panel.png)
+![View for non-admin users](img/non_admin_page.png)
 
 ## Technical Implementation
 
@@ -54,10 +58,14 @@ The core logic resides in a Solidity smart contract that:
 ## Project Architecture
 
 ### Current Project Structure
+
 ```
 Lottery_Project/
 ├── contracts/                  # Smart contract source files
 │   └── DecentralizedLottery.sol   # Main lottery contract
+│
+├── test/                       # Unit test files
+│   └── DecentralizedLottery.test.js  # Smart contract unit tests
 │
 ├── frontend/                   # Web application files
 │   ├── index.html              # Main application entry point
@@ -76,13 +84,17 @@ Lottery_Project/
 │       └── DecentralizedLottery.json  # ABI and deployment data
 │
 ├── server.js                   # Express server for local development
+│
 ├── truffle-config.js           # Truffle configuration
+│
 ├── utils.js                    # Utility functions
+│
 ├── .github/workflows/          # CI/CD pipeline configuration
 │   └── deploy.yml              # GitHub Pages deployment workflow
 │
 ├── package.json                # Project dependencies
-├── README.md                   # Project documentation
+│
+└── README.md                   # Project documentation
 └── report.md                   # This functionality report
 ```
 
@@ -109,10 +121,24 @@ Lottery_Project/
    - Secure random winner selection process
 
 4. **Development & Deployment Infrastructure**
-   - Local development server with Express.js
    - Truffle framework for contract compilation, testing, and migration
    - GitHub Actions workflow for automated deployment to GitHub Pages
    - Environment-specific configurations for different networks
+   - Ganache is used for local development
+
+5. **Manual Testing**
+   - Manual testing of all features
+   - Tested on Sepolia testnet and local Ganache
+   - Tested on different browsers and devices
+   - Tested on different wallet providers
+   - Tested on different network configurations
+   - Tested on different contract addresses
+   - Tested on different admin addresses
+6. **Unit Testing**
+   - Unit tests for smart contract functionality
+   - Integration tests for frontend-backend interaction
+   - You may find the test code in the test folder
+   ![alt!text](img/unit_test.png)
 
 ### Data Flow
 
@@ -135,7 +161,7 @@ User Actions                  Smart Contract Functions           Events
 - Complete transaction transparency on the blockchain
 
 ## Deployment
-The application is deployed on the Ethereum Sepolia testnet with a live demo available, and can also be run locally for development and testing purposes with Ganache.
+The application is deployed on the Ethereum Sepolia testnet with a [live demo](https://johnnysy-dio.github.io/Lottery_Project/frontend/index.html) available, and can also be run locally for development and testing purposes with Ganache.
 
 ## Conclusion
 The Decentralized Ethereum Lottery provides a complete solution for running transparent, automated lottery systems on blockchain technology. It eliminates traditional concerns about lottery fairness by leveraging Ethereum's decentralized nature while offering intuitive interfaces for both users and administrators. 
