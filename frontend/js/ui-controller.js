@@ -123,6 +123,7 @@ class UIController {
     
     // Update network status display
     updateNetworkStatus(networkName, isSupportedNetwork) {
+        console.log(`Updating network status: ${networkName} (supported: ${isSupportedNetwork})`);
         if (this.networkDisplay) {
             this.networkDisplay.textContent = networkName;
             
@@ -139,12 +140,71 @@ class UIController {
             
             // If we're on Ganache local network, show additional info
             if (networkName === "Ganache Local") {
-                this.showStatus("You are on Ganache Local network. Use the 'Ganache Accounts' button to select an account.", "info");
+                // Check if we've already shown the message recently to avoid repetition
+                const lastShown = sessionStorage.getItem('ganacheMessageLastShown');
+                const now = new Date().getTime();
+                
+                if (!lastShown || (now - parseInt(lastShown)) > 10000) { // Only show every 10 seconds
+                    // Show Ganache-specific message
+                    this.showStatus(
+                        `<div class="alert alert-warning mb-0">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <strong>Local Development Mode</strong>: This Ganache network view is for local development testing only.
+                            Please ensure you are running this app on your local machine and have Ganache running at http://127.0.0.1:7545
+                        </div>`,
+                        'info'
+                    );
+                    
+                    // Remember that we showed the message
+                    sessionStorage.setItem('ganacheMessageLastShown', now.toString());
+                }
+                
+                // Show development mode badge
+                this.showDevelopmentModeBadge();
+            } else {
+                // Remove development mode badge if exists
+                this.removeDevelopmentModeBadge();
             }
             
             console.log(`Network status updated to: ${networkName} (Supported: ${isSupportedNetwork})`);
         } else {
             console.warn("Network display element not found");
+        }
+    }
+    
+    // Show development mode badge
+    showDevelopmentModeBadge() {
+        // Remove any existing badge first
+        this.removeDevelopmentModeBadge();
+        
+        // Create development mode badge
+        const devBadge = document.createElement('div');
+        devBadge.id = 'developmentModeBadge';
+        devBadge.className = 'development-mode-badge';
+        devBadge.innerHTML = '<i class="bi bi-code-slash me-2"></i>LOCAL DEVELOPMENT MODE';
+        
+        // Add styles
+        devBadge.style.position = 'fixed';
+        devBadge.style.top = '60px';
+        devBadge.style.left = '0';
+        devBadge.style.right = '0';
+        devBadge.style.backgroundColor = '#FFC107';
+        devBadge.style.color = '#000';
+        devBadge.style.textAlign = 'center';
+        devBadge.style.padding = '5px';
+        devBadge.style.fontWeight = 'bold';
+        devBadge.style.zIndex = '1000';
+        devBadge.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+        
+        // Add to body
+        document.body.appendChild(devBadge);
+    }
+    
+    // Remove development mode badge
+    removeDevelopmentModeBadge() {
+        const existingBadge = document.getElementById('developmentModeBadge');
+        if (existingBadge) {
+            existingBadge.remove();
         }
     }
     

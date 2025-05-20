@@ -227,7 +227,12 @@ class EventHandlers {
 
                 // Update Ganache UI elements
                 this._updateGanacheUI();
+                
+                // Prevent MetaMask's default page reload
+                return false;
             });
+        } else {
+            console.log("MetaMask not detected. Ethereum event listeners not set up.");
         }
     }
     
@@ -248,11 +253,26 @@ class EventHandlers {
                     return;
                 }
                 
+                // Debug logs for network switching
+                console.log('=== NETWORK SWITCHING DEBUG ===');
+                console.log('Current chain ID:', CONFIG.CHAIN_ID);
+                console.log('Target network:', targetNetwork);
+                console.log('isCurrentlyGanache:', CONFIG.CHAIN_ID === "0x539");
+                console.log('isSwitchingToGanache:', targetNetwork === "0x539");
+                console.log('===========================');
+                
                 this.uiController.showStatus(`Switching to ${networkName}...`, 'info');
                 
                 // Special handling for switching to Ganache
                 const isCurrentlyGanache = CONFIG.CHAIN_ID === "0x539";
                 const isSwitchingToGanache = targetNetwork === "0x539";
+                
+                // If user clicked on the currently active network, do nothing
+                if (CONFIG.CHAIN_ID === targetNetwork) {
+                    console.log('Already on this network, no need to switch');
+                    this.uiController.showStatus(`You are already on ${networkName}`, 'info');
+                    return;
+                }
                 
                 // If switching to Ganache from another network, we need to disconnect any existing wallet first
                 if (isSwitchingToGanache && !isCurrentlyGanache) {
@@ -309,6 +329,23 @@ class EventHandlers {
                     
                     // Show success message
                     this.uiController.showSuccess(`Successfully switched to ${networkName}`);
+                    
+                    // If switching to Ganache FROM another network, reload the page after a short delay
+                    // ONLY do this when ACTUALLY switching FROM non-Ganache TO Ganache
+                    if (isSwitchingToGanache && !isCurrentlyGanache && !CONFIG.DISABLE_AUTO_RELOAD) {
+                        console.log('Switching FROM another network TO Ganache - will reload page');
+                        this.uiController.showStatus("Switching to local development mode. Please wait...", "info");
+                        
+                        // Set a flag in localStorage to prevent reload loops
+                        const now = new Date().getTime();
+                        localStorage.setItem('lastGanacheSwitch', now);
+                        
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        console.log('Not reloading page - network switch does not require reload or auto-reload is disabled');
+                    }
                     
                 } catch (error) {
                     console.error(`Failed to switch to network ${targetNetwork}:`, error);

@@ -21,6 +21,75 @@
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%236c5ce7' d='M12 0L5 7l2 2 5-5 5 5 2-2L12 0zm0 4L4 12l2 2 6-6 6 6 2-2-8-8zm0 8l-6 6 6 6 6-6-6-6z'/%3E%3C/svg%3E">
+    
+    <!-- Prevent auto-reload script -->
+    <script>
+        // Override window.location.reload to prevent automatic page reloads
+        console.log("Initializing reload prevention...");
+        
+        // Store original reload function
+        window._originalReload = window.location.reload;
+        
+        // Override the reload function
+        window.location.reload = function(forceGet) {
+            console.log("🛑 Reload attempted - checking if prevention is active");
+            
+            // Check if we should prevent reloads
+            if (window.location.href.toLowerCase().includes('ganache') || 
+                localStorage.getItem('disableAutoReload') === 'true') {
+                console.log("🛑 Reload prevented by override");
+                return false;
+            } else {
+                console.log("✅ Reload allowed - not in prevention mode");
+                return window._originalReload(forceGet);
+            }
+        };
+        
+        // Add reset button to clear localStorage (visible in console only)
+        window.resetReloadPrevention = function() {
+            localStorage.removeItem('disableAutoReload');
+            localStorage.removeItem('lastGanacheSwitch');
+            sessionStorage.clear();
+            console.log("🔄 Reload prevention settings reset");
+        };
+        
+        // Set prevention flag based on URL
+        if (window.location.href.toLowerCase().includes('ganache')) {
+            localStorage.setItem('disableAutoReload', 'true');
+            console.log("🔒 Reload prevention activated based on URL");
+        }
+        
+        // Prevent MetaMask's default chain change behavior
+        window.addEventListener('load', function() {
+            if (window.ethereum) {
+                const originalOn = window.ethereum.on;
+                
+                window.ethereum.on = function(eventName, listener) {
+                    if (eventName === 'chainChanged') {
+                        console.log("🔧 Intercepted chainChanged event subscription");
+                        
+                        // Replace with our own handler that doesn't reload
+                        return originalOn.call(window.ethereum, eventName, function(chainId) {
+                            console.log("⛓️ Chain changed to:", chainId);
+                            console.log("🛑 Preventing MetaMask's automatic page reload");
+                            
+                            // Call the original listener but prevent any reloads it might trigger
+                            try {
+                                listener(chainId);
+                            } catch (error) {
+                                console.error("Error in chainChanged handler:", error);
+                            }
+                        });
+                    } else {
+                        // For other events, use the original behavior
+                        return originalOn.call(window.ethereum, eventName, listener);
+                    }
+                };
+                
+                console.log("🔒 MetaMask chainChanged event modified to prevent reloads");
+            }
+        });
+    </script>
 </head>
 <body>
     <!-- Navigation -->
@@ -335,9 +404,10 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle me-2"></i>
-                        You're in local development mode. Please select one of the available Ganache accounts to connect.
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <strong>Local Development Environment</strong>
+                        <p class="mb-0">You're in local development mode. This interface is for testing purposes only and should only be used on your local machine with Ganache running at http://127.0.0.1:7545.</p>
                     </div>
                     <table class="table table-hover">
                         <thead>

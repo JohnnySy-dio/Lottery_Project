@@ -9,14 +9,15 @@ const CONFIG = {
         // Sepolia testnet
         "0xaa36a7": "0x3a1c2615aD402B4C706780374F9C7746125d7C24",
         // Ganache local
-        "0x539": "0xdBfcBD0e42d1d78061CD2dfC23Fc6D4C9992131c",  // Will be updated after local deployment
+        "0x539": "0x870aE4D8D3b52f0028CC0C4274e60B8F7c600F51",  // Will be updated after local deployment
         // Add more networks as needed
     },
     
     // Default settings - will update based on selected network
-    CONTRACT_ADDRESS: "0x3a1c2615aD402B4C706780374F9C7746125d7C24",
+    CONTRACT_ADDRESS: "0xa9684d2C0Da71d1F3107cf9d45CcD57e5a528C30",
     NETWORK_ID: 11155111,  // Sepolia testnet
     CHAIN_ID: "0xaa36a7",  // Sepolia chain ID in hex for MetaMask
+    DISABLE_AUTO_RELOAD: true, // Completely disable any automatic page reloads
     
     // Network-specific RPC endpoints
     RPC_ENDPOINTS: {

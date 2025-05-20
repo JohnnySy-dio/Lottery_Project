@@ -27,6 +27,8 @@ class App {
     // Initialize the application
     async init() {
         console.log("Initializing Decentralized Lottery App...");
+        console.log("Current chain ID:", CONFIG.CHAIN_ID);
+        console.log("Is Ganache:", CONFIG.CHAIN_ID === "0x539");
         
         try {
             // Step 1: Try to initialize web3
@@ -46,9 +48,17 @@ class App {
             }
             
             // Step 4: Check network and show appropriate UI
-            const networkName = this.web3Provider.getNetworkName(await window.ethereum.request({ method: 'eth_chainId' }));
-            const isCorrectNetwork = await this.web3Provider.isCorrectNetwork();
-            this.uiController.updateNetworkStatus(networkName, isCorrectNetwork);
+            try {
+                const chainId = await window.ethereum?.request({ method: 'eth_chainId' });
+                const networkName = this.web3Provider.getNetworkName(chainId);
+                const isCorrectNetwork = await this.web3Provider.isCorrectNetwork();
+                this.uiController.updateNetworkStatus(networkName, isCorrectNetwork);
+            } catch (error) {
+                // Fallback for when window.ethereum is not available (like in Ganache mode)
+                console.log("Could not get chain ID from ethereum object, using CONFIG value");
+                const networkName = this.web3Provider.getNetworkName(CONFIG.CHAIN_ID);
+                this.uiController.updateNetworkStatus(networkName, true);
+            }
             
             // Step 5: Get initial lottery data
             await this.refreshData();
