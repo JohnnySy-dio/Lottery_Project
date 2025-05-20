@@ -7,10 +7,17 @@ const PUBLIC_SEPOLIA_RPC = "https://ethereum-sepolia.publicnode.com";
 // Development configuration for Truffle
 module.exports = {
   networks: {
+    // Default development network using Ganache CLI (ganache)
     development: {
       host: "127.0.0.1",
-      port: 7545,
+      port: 7545,  // Default 
       network_id: "*" // Match any network id
+    },
+    // Ganache UI configuration (if using the GUI version)
+    ganache_ui: {
+      host: "127.0.0.1",
+      port: 7545,  // Default Ganache UI port
+      network_id: "*"
     },
     sepolia: {
       provider: () => {

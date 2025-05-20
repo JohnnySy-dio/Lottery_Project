@@ -216,6 +216,35 @@ footer {
     margin-top: auto;
 }
 
+/* User Account Display */
+.user-account-container {
+    position: relative;
+}
+
+.user-account {
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.user-account:hover {
+    text-decoration: underline;
+    color: var(--primary-color);
+}
+
+.user-balance {
+    line-height: 1.2;
+}
+
+.user-full-address {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.85rem;
+    word-break: break-all;
+    background-color: rgba(108, 92, 231, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    margin-top: 0.25rem;
+}
+
 footer a {
     color: var(--primary-color);
     text-decoration: none;

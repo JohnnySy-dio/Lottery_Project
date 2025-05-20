@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
 const app = express();
-const PORT = 3000; // Changed port to 4001 to avoid conflicts
+const PORT = 3001; // Changed from 3000 to 3001 to avoid potential conflicts
 
 // Serve static files from the frontend directory
 app.use(express.static(path.join(__dirname, 'frontend')));

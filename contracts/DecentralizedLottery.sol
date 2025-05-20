@@ -24,7 +24,7 @@ contract DecentralizedLottery {
     event AdminFeesWithdrawn(uint amount);
 
     constructor() {
-        owner = 0x64bDb9962c7408276EE7B2B774b597813A20c76b;
+        owner = msg.sender;
         lotteryId = 1;
         emit LotteryOpened(lotteryId, block.timestamp);
     }
@@ -127,15 +127,10 @@ contract DecentralizedLottery {
         emit LotteryOpened(lotteryId, block.timestamp);
     }
 
-    // Updated random function for post-Merge Ethereum
+    // Updated random function compatible with both Ganache and post-Merge Ethereum
     function random() private view returns (uint) {
-        // Use prevrandao instead of difficulty for post-Merge Ethereum
-        return
-            uint(
-                keccak256(
-                    abi.encodePacked(block.prevrandao, block.timestamp, players)
-                )
-            );
+        // Use block.difficulty which works on Ganache and maps to prevrandao on post-Merge Ethereum
+        return uint(keccak256(abi.encodePacked(block.prevrandao, block.timestamp, players)));
     }
 
     // Function for admin to withdraw accumulated fees

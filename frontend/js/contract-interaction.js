@@ -22,13 +22,41 @@ class ContractInteraction {
 
     // Helper to get the appropriate contract instance
     getContract(write = false) {
+        // Special handling for Ganache
+        if (CONFIG.CHAIN_ID === "0x539") {
+            if (write) {
+                if (!this.web3Provider.isWriteConnected) {
+                    throw new Error("Not connected to Ganache. Please select a Ganache account from the 'Ganache Accounts' dropdown first.");
+                }
+                if (!this.web3Provider.writeContract) {
+                    throw new Error("No contract deployed on Ganache. Please deploy the contract first using: truffle migrate --network development");
+                }
+                return this.web3Provider.writeContract;
+            }
+            
+            const contract = this.web3Provider.getContract();
+            if (!contract) {
+                throw new Error("No contract available on Ganache. Please deploy the contract first using: truffle migrate --network development");
+            }
+            return contract;
+        }
+        
+        // Standard handling for other networks
         if (write) {
             if (!this.web3Provider.isWriteConnected) {
                 throw new Error("Write connection not available. Please connect your wallet.");
             }
+            if (!this.web3Provider.writeContract) {
+                throw new Error("No contract deployed on this network. Please deploy the contract first.");
+            }
             return this.web3Provider.writeContract;
         }
-        return this.web3Provider.getContract();
+        
+        const contract = this.web3Provider.getContract();
+        if (!contract) {
+            throw new Error("No contract available. Contract may not be deployed on this network.");
+        }
+        return contract;
     }
 
     // ------------- READ FUNCTIONS -------------
@@ -94,8 +122,16 @@ class ContractInteraction {
     // Check if an address has joined a lottery
     async hasJoined(lotteryId, address) {
         try {
+            console.log(`Checking if address ${address} has joined lottery ${lotteryId}`);
+            
+            // Directly call the contract to ensure we get fresh data
+            if (!address) return false;
+            
             // Contract uses a mapping, not a function
-            return await this.getContract().methods.hasEntered(address).call();
+            const hasEntered = await this.getContract().methods.hasEntered(address).call();
+            console.log(`Address ${address} has ${hasEntered ? 'joined' : 'not joined'} the lottery`);
+            
+            return hasEntered;
         } catch (error) {
             console.error(`Failed to check if address ${address} joined lottery ${lotteryId}:`, error);
             throw error;
@@ -125,15 +161,34 @@ class ContractInteraction {
         }
     }
 
+    // Get the contract owner address
+    async getOwnerAddress() {
+        try {
+            return await this.getContract().methods.owner().call();
+        } catch (error) {
+            console.error("Failed to get owner address:", error);
+            throw error;
+        }
+    }
+
     // ------------- WRITE FUNCTIONS -------------
 
     // Enter lottery
     async enterLottery() {
-        if (!this.web3Provider.isWriteConnected) {
-            throw new Error("MetaMask not connected. Please connect your wallet to enter the lottery.");
-        }
-
         try {
+            // First check if we have a deployed contract
+            if (CONFIG.CHAIN_ID === "0x539" && (!this.web3Provider.writeContract || !this.web3Provider.writeWeb3)) {
+                throw new Error("No contract deployed on Ganache. Please deploy the contract first using: truffle migrate --network development");
+            }
+
+            if (!this.web3Provider.isWriteConnected) {
+                if (CONFIG.CHAIN_ID === "0x539") {
+                    throw new Error("Not connected to Ganache. Please select a Ganache account from the 'Ganache Accounts' dropdown first.");
+                } else {
+                    throw new Error("MetaMask not connected. Please connect your wallet to enter the lottery.");
+                }
+            }
+
             // Check if lottery is open
             const isOpen = await this.getContract().methods.lotteryOpen().call();
             if (!isOpen) {
@@ -158,7 +213,7 @@ class ContractInteraction {
         } catch (error) {
             console.error("Failed to enter lottery:", error);
             if (this.statusCallbacks.onError) {
-                this.statusCallbacks.onError("Failed to enter lottery: " + error.message);
+                this.statusCallbacks.onError(error.message);
             }
             throw error;
         }
@@ -284,14 +339,36 @@ class ContractInteraction {
                 this.statusCallbacks.onPending("Setting minimum players...");
             }
             
+            console.log(`Attempting to set minimum players to ${minPlayers}`);
+            
             // Ensure minPlayers is a number
             const minPlayersValue = parseInt(minPlayers);
             if (isNaN(minPlayersValue) || minPlayersValue < 2) {
                 throw new Error("Minimum players must be at least 2");
             }
             
+            // Check if user is owner
+            const isOwner = await this.isOwner();
+            console.log(`Current user is owner: ${isOwner}`);
+            if (!isOwner) {
+                throw new Error("Only the contract owner can set minimum players");
+            }
+            
+            // Check contract connection
+            if (!this.web3Provider.writeContract || !this.web3Provider.writeWeb3) {
+                console.error("No write contract available");
+                throw new Error("Contract not properly initialized");
+            }
+            
+            // Get the contract's current min players for comparison
+            const currentMinPlayers = await this.getContract().methods.minPlayers().call();
+            console.log(`Current contract minimum players: ${currentMinPlayers}, new value: ${minPlayersValue}`);
+            
             // Call the contract method
+            console.log("Preparing transaction to set min players...");
             const tx = this.getContract(true).methods.setMinPlayers(minPlayersValue);
+            console.log("Transaction prepared, sending...");
+            
             return this._sendTransaction(tx, "0");
         } catch (error) {
             console.error("Failed to set minimum players:", error);

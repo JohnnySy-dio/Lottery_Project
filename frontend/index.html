@@ -46,18 +46,34 @@
                     </li>
                 </ul>
                 <div class="d-flex align-items-center">
+                    <div class="dropdown me-3">
+                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="networkSelector" data-bs-toggle="dropdown" aria-expanded="false">
+                            Select Network
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="networkSelector">
+                            <li><a class="dropdown-item" href="#" data-network="0xaa36a7">Sepolia Testnet</a></li>
+                            <li><a class="dropdown-item" href="#" data-network="0x539">Ganache Local</a></li>
+                        </ul>
+                    </div>
                     <span class="me-3">
                         Network: <span id="networkName" class="badge bg-secondary">Not Connected</span>
                     </span>
                     <span class="me-3">
                         Status: <span id="connectionStatus" class="badge bg-danger">Not Connected</span>
                     </span>
-                    <span id="userAccount" class="me-3">Not connected</span>
+                    <div class="me-3 user-account-container">
+                        <div id="userAccount" class="user-account">Not connected</div>
+                        <div id="userBalance" class="user-balance small text-muted" style="display: none;"></div>
+                        <div id="userFullAddress" class="user-full-address small text-monospace d-none"></div>
+                    </div>
                     <button id="connectWalletBtn" class="btn btn-primary">
                         <i class="bi bi-wallet2"></i> Connect Wallet
                     </button>
                     <button id="switchNetworkBtn" class="btn btn-warning ms-2" style="display: none;">
                         Switch Network
+                    </button>
+                    <button id="ganacheAccountSelectorBtn" class="btn btn-info ms-2" style="display: none;">
+                        <i class="bi bi-person-circle"></i> Ganache Accounts
                     </button>
         </div>
             </div>
@@ -305,6 +321,49 @@
     <!-- Toast Container for Notifications -->
     <div id="toastContainer"></div>
 
+    <!-- Ganache Account Selector Modal -->
+    <div class="modal fade" id="ganacheAccountSelectorModal" tabindex="-1" aria-labelledby="ganacheAccountSelectorModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="ganacheAccountSelectorModalLabel">
+                        <i class="bi bi-wallet2 me-2"></i>
+                        Ganache Accounts
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        You're in local development mode. Please select one of the available Ganache accounts to connect.
+                    </div>
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Account</th>
+                                <th>Balance</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ganacheAccountsTable">
+                            <!-- Accounts will be populated here -->
+                            <tr>
+                                <td colspan="3" class="text-center">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Web3.js -->
     <script src="https://cdn.jsdelivr.net/npm/web3@1.7.3/dist/web3.min.js"></script>
     
@@ -321,18 +380,51 @@
     
     <!-- Debug script to immediately set contract address -->
     <script>
-        // Directly set the contract address from CONFIG
+        // Dynamically update network-specific information
         document.addEventListener('DOMContentLoaded', function() {
-            // Set contract address in footer
-            document.getElementById('footerContractAddress').textContent = CONFIG.CONTRACT_ADDRESS;
+            // Function to update UI based on current network
+            function updateNetworkUI() {
+                // Set contract address in footer - make sure to handle undefined
+                const contractAddress = CONFIG.CONTRACT_ADDRESS || "Not deployed yet";
+                document.getElementById('footerContractAddress').textContent = contractAddress;
+                
+                // Set appropriate explorer links based on network
+                let explorerUrl;
+                if (CONFIG.CHAIN_ID === "0xaa36a7") {
+                    explorerUrl = 'https://sepolia.etherscan.io/address/' + CONFIG.CONTRACT_ADDRESS;
+                    document.getElementById('etherscanLink').textContent = "View on Etherscan";
+                    document.getElementById('footerEtherscanLink').textContent = "Etherscan";
+                } else if (CONFIG.CHAIN_ID === "0x539") {
+                    // For Ganache, we should check if the contract is deployed
+                    if (CONFIG.CONTRACT_ADDRESS && CONFIG.CONTRACT_ADDRESS !== "") {
+                        explorerUrl = '#'; // Ganache doesn't have an explorer
+                        document.getElementById('etherscanLink').textContent = "Local Network (Deployed)";
+                    } else {
+                        explorerUrl = '#';
+                        document.getElementById('etherscanLink').textContent = "Local Network (Not Deployed)";
+                    }
+                    document.getElementById('footerEtherscanLink').textContent = "Local Network";
+                } else {
+                    explorerUrl = '#';
+                }
+                
+                document.getElementById('etherscanLink').href = explorerUrl;
+                document.getElementById('footerEtherscanLink').href = explorerUrl;
+                
+                console.log('Contract address set to:', CONFIG.CONTRACT_ADDRESS);
+                console.log('Explorer URL set to:', explorerUrl);
+            }
             
-            // Set Etherscan links
-            const etherscanUrl = 'https://sepolia.etherscan.io/address/' + CONFIG.CONTRACT_ADDRESS;
+            // Initial update
+            updateNetworkUI();
             
-            document.getElementById('etherscanLink').href = etherscanUrl;
-            document.getElementById('footerEtherscanLink').href = etherscanUrl;
-            
-            console.log('Contract address set to:', CONFIG.CONTRACT_ADDRESS);
+            // Listen for network changes
+            document.querySelectorAll('.dropdown-item[data-network]').forEach(item => {
+                item.addEventListener('click', function() {
+                    // Update happens after CONFIG is updated in the click handler
+                    setTimeout(updateNetworkUI, 100);
+                });
+            });
         });
     </script>
 </body>

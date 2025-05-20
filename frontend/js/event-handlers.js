@@ -23,14 +23,18 @@ class EventHandlers {
         this.closeLotteryBtn = document.getElementById('closeLotteryBtn');
         this.setMinPlayersBtn = document.getElementById('setMinPlayersBtn');
         this.minPlayersInput = document.getElementById('minPlayersInput');
+        this.networkSelector = document.getElementById('networkSelector');
+        this.ganacheAccountSelectorBtn = document.getElementById('ganacheAccountSelectorBtn');
     }
     
     // Initialize all event listeners
     setupEventListeners() {
         this._setupWalletConnectionEvents();
+        this._setupNetworkSelectionEvents();
         this._setupLotteryActions();
         this._setupAdminActions();
         this._setupRefreshEvents();
+        this._setupGanacheEvents();
     }
     
     // Setup wallet connection events
@@ -39,29 +43,59 @@ class EventHandlers {
         if (this.connectWalletBtn) {
             this.connectWalletBtn.addEventListener('click', async () => {
                 try {
-                    if (!window.ethereum) {
-                        this.uiController.showError("MetaMask not detected. Please install MetaMask to interact with the contract.");
-                        return;
+                    // Check if we're on Ganache network 
+                    if (CONFIG.CHAIN_ID === "0x539") {
+                        // For Ganache, we'll show the account selector modal
+                        this._setupGanacheAccountSelector();
+                        
+                        // We'll set up a custom callback that will be triggered when the accounts are loaded
+                        this.web3Provider.onGanacheAccountsLoaded = async (accounts) => {
+                            await this._populateGanacheAccountsTable(accounts);
+                            
+                            // Show the modal
+                            const modal = new bootstrap.Modal(document.getElementById('ganacheAccountSelectorModal'));
+                            modal.show();
+                        };
+                        
+                        // Load Ganache accounts
+                        await this.web3Provider.getGanacheAccounts();
+                    } else {
+                        // For non-Ganache networks, check for MetaMask
+                        if (!window.ethereum) {
+                            this.uiController.showError("MetaMask not detected. Please install MetaMask to interact with the contract.");
+                            return;
+                        }
+                        
+                        // Visual feedback
+                        this.connectWalletBtn.textContent = 'Connecting...';
+                        this.connectWalletBtn.disabled = true;
+                        
+                        await this.web3Provider.connectWallet();
+                        
+                        // Get account balance if connected
+                        let balance = null;
+                        if (this.web3Provider.isWriteConnected && this.web3Provider.userAccount) {
+                            balance = await this.web3Provider.getAccountBalance();
+                        }
+                        
+                        // Update UI
+                        this.uiController.updateConnectionStatus(
+                            this.web3Provider.isWriteConnected,
+                            this.web3Provider.userAccount,
+                            balance
+                        );
+                        
+                        // Refresh data
+                        await this.app.refreshData();
+                        
+                        // Reset button
+                        if (this.web3Provider.isWriteConnected) {
+                            this.connectWalletBtn.textContent = 'Wallet Connected';
+                        } else {
+                            this.connectWalletBtn.textContent = 'Connect Wallet';
+                            this.connectWalletBtn.disabled = false;
+                        }
                     }
-                    
-                    // Visual feedback
-                    this.connectWalletBtn.textContent = 'Connecting...';
-                    this.connectWalletBtn.disabled = true;
-                    
-                    await this.web3Provider.connectWallet();
-                    
-                    // Update UI
-                    this.uiController.updateConnectionStatus(
-                        this.web3Provider.isWriteConnected,
-                        this.web3Provider.userAccount
-                    );
-                    
-                    // Refresh data
-                    await this.app.refreshData();
-                    
-                    // Reset button
-                    this.connectWalletBtn.textContent = 'Wallet Connected';
-                    
                 } catch (error) {
                     console.error("Failed to connect wallet:", error);
                     this.uiController.showError(`Failed to connect wallet: ${error.message}`);
@@ -81,6 +115,7 @@ class EventHandlers {
                     this.switchNetworkBtn.textContent = 'Switching...';
                     this.switchNetworkBtn.disabled = true;
                     
+                    // Switch to currently selected network
                     await this.web3Provider.switchNetwork();
                     
                     // Update UI
@@ -121,7 +156,19 @@ class EventHandlers {
                     // User changed account
                     this.web3Provider.userAccount = accounts[0];
                     this.web3Provider.isWriteConnected = true;
-                    this.uiController.updateConnectionStatus(true, accounts[0]);
+                    
+                    // Get the account balance
+                    let balance = null;
+                    try {
+                        if (this.web3Provider.writeWeb3) {
+                            const balanceWei = await this.web3Provider.writeWeb3.eth.getBalance(accounts[0]);
+                            balance = this.web3Provider.writeWeb3.utils.fromWei(balanceWei, 'ether');
+                        }
+                    } catch (error) {
+                        console.error("Error getting account balance:", error);
+                    }
+                    
+                    this.uiController.updateConnectionStatus(true, accounts[0], balance);
                     
                     if (this.connectWalletBtn) {
                         this.connectWalletBtn.textContent = 'Wallet Connected';
@@ -131,27 +178,144 @@ class EventHandlers {
                 
                 // Refresh data with new account
                 await this.app.refreshData();
+                
+                // Update Ganache UI elements
+                this._updateGanacheUI();
             });
             
             // Network change listener
-            window.ethereum.on('chainChanged', async (chainId) => {
-                console.log("MetaMask network changed:", chainId);
-                
-                // Check if it's the correct network
-                const isCorrectNetwork = chainId === CONFIG.CHAIN_ID;
-                const networkName = await this.web3Provider.getNetworkName();
-                
-                this.uiController.updateNetworkStatus(networkName, isCorrectNetwork);
-                
+            window.ethereum.on('chainChanged', async (rawChainId) => {
+                console.log("MetaMask network changed to (raw):", rawChainId);
+
+                // Normalize chainId for Ganache - handle all possible Ganache chain IDs
+                // 0x539 (hex for 1337), 1337 (decimal), 0x1691 (hex for 5777), 5777 (decimal)
+                let chainId = rawChainId;
+                if (rawChainId === "0x539" || rawChainId === "1337" || rawChainId === 1337 ||
+                    rawChainId === "0x1691" || rawChainId === "5777" || rawChainId === 5777) {
+                    chainId = "0x539"; // Normalize to our standard Ganache chain ID
+                    console.log("Ganache network detected. Normalized chain ID to:", chainId);
+                }
+                console.log("MetaMask network changed to (normalized):", chainId);
+
+                const isSupported = this.web3Provider.isNetworkSupported(chainId);
+                const networkName = this.web3Provider.getNetworkName(chainId);
+
+                // Update the network selector button text
+                if (this.networkSelector) {
+                    this.networkSelector.textContent = networkName;
+                }
+
+                this.uiController.updateNetworkStatus(networkName, isSupported);
+
                 // Toggle network switch button
                 if (this.switchNetworkBtn) {
-                    this.switchNetworkBtn.style.display = isCorrectNetwork ? 'none' : 'inline-block';
+                    this.switchNetworkBtn.style.display = isSupported ? 'none' : 'inline-block';
                 }
-                
-                // Refresh application data
-                await this.app.refreshData();
+
+                if (isSupported) {
+                    if (CONFIG.CHAIN_ID !== chainId) {
+                        console.log(`Updating global config to chainId: ${chainId}`);
+                        CONFIG.setNetwork(chainId);
+                        // web3Provider's internal state (read/write contracts) should be re-established by its own methods or by refreshData
+                        await this.app.refreshData();
+                    } else {
+                        console.log(`ChainId ${chainId} is already the current CONFIG.CHAIN_ID. No config update needed from chainChanged event.`);
+                    }
+                } else {
+                    this.uiController.showWarning(`Network ${networkName} (ID: ${chainId}) is not supported by this application. Please switch to a supported network.`);
+                }
+
+                // Update Ganache UI elements
+                this._updateGanacheUI();
             });
         }
+    }
+    
+    // Setup network selection events
+    _setupNetworkSelectionEvents() {
+        // Network selector dropdown
+        const networkItems = document.querySelectorAll('.dropdown-item[data-network]');
+        
+        networkItems.forEach(item => {
+            item.addEventListener('click', async (event) => {
+                event.preventDefault();
+                
+                const targetNetwork = event.target.getAttribute('data-network');
+                const networkName = CONFIG.NETWORKS[targetNetwork];
+                
+                if (!networkName) {
+                    this.uiController.showError(`Invalid network selection: ${targetNetwork}`);
+                    return;
+                }
+                
+                this.uiController.showStatus(`Switching to ${networkName}...`, 'info');
+                
+                // Special handling for switching to Ganache
+                const isCurrentlyGanache = CONFIG.CHAIN_ID === "0x539";
+                const isSwitchingToGanache = targetNetwork === "0x539";
+                
+                // If switching to Ganache from another network, we need to disconnect any existing wallet first
+                if (isSwitchingToGanache && !isCurrentlyGanache) {
+                    if (this.web3Provider.isWriteConnected) {
+                        console.log("Disconnecting MetaMask wallet before switching to Ganache");
+                        // Reset wallet connection state
+                        this.web3Provider.userAccount = null;
+                        this.web3Provider.isWriteConnected = false;
+                        this.web3Provider.writeWeb3 = null;
+                        this.web3Provider.writeContract = null;
+                        
+                        // Update UI to show disconnected state
+                        this.uiController.updateConnectionStatus(false);
+                    }
+                }
+                // If switching away from Ganache to another network, reset connection state
+                else if (isCurrentlyGanache && !isSwitchingToGanache) {
+                    console.log("Switching away from Ganache, resetting connection state");
+                    // Reset Ganache connection state
+                    this.web3Provider.userAccount = null;
+                    this.web3Provider.isWriteConnected = false;
+                    this.web3Provider.writeWeb3 = null;
+                    this.web3Provider.writeContract = null;
+                    
+                    // Update UI to show disconnected state
+                    this.uiController.updateConnectionStatus(false);
+                }
+                
+                // Update global config
+                CONFIG.setNetwork(targetNetwork);
+                
+                // Always update network status in the UI
+                this.uiController.updateNetworkStatus(networkName, true);
+                
+                // Update network selector button text
+                if (this.networkSelector) {
+                    this.networkSelector.textContent = networkName;
+                }
+                
+                try {
+                    // If wallet is connected and not switching to/from Ganache, try to switch MetaMask
+                    if (this.web3Provider.isWriteConnected && !isCurrentlyGanache && !isSwitchingToGanache) {
+                        await this.web3Provider.switchNetwork(targetNetwork);
+                    } else {
+                        // Just reinitialize read provider
+                        await this.web3Provider.initReadOnlyWeb3();
+                    }
+                    
+                    // Refresh application data
+                    await this.app.refreshData();
+                    
+                    // Update Ganache UI elements
+                    this._updateGanacheUI();
+                    
+                    // Show success message
+                    this.uiController.showSuccess(`Successfully switched to ${networkName}`);
+                    
+                } catch (error) {
+                    console.error(`Failed to switch to network ${targetNetwork}:`, error);
+                    this.uiController.showError(`Failed to switch network: ${error.message}`);
+                }
+            });
+        });
     }
     
     // Setup lottery action events
@@ -457,12 +621,12 @@ class EventHandlers {
                         }
                     });
                     
-                    // Set the new entry fee
+                    // Update entry fee
                     await this.contractInteraction.setEntryFee(newFee);
                     
                 } catch (error) {
-                    console.error("Failed to set entry fee:", error);
-                    this.uiController.showError(`Failed to set entry fee: ${error.message}`);
+                    console.error("Failed to update entry fee:", error);
+                    this.uiController.showError(`Failed to update entry fee: ${error.message}`);
                     
                     // Reset button
                     this.setEntryFeeBtn.disabled = false;
@@ -470,8 +634,79 @@ class EventHandlers {
                 }
             });
         }
-        
-        // Set up Withdraw Admin Fees button
+
+        // Set Min Players button
+        if (this.setMinPlayersBtn && this.minPlayersInput) {
+            this.setMinPlayersBtn.addEventListener('click', async () => {
+                try {
+                    if (!this.web3Provider.isWriteConnected) {
+                        this.uiController.showError("Please connect your wallet first.");
+                        return;
+                    }
+                    
+                    const isOwner = await this.contractInteraction.isOwner();
+                    if (!isOwner) {
+                        this.uiController.showError("Only the contract owner can set minimum players.");
+                        return;
+                    }
+                    
+                    // Get and validate the new min players value
+                    const minPlayers = parseInt(this.minPlayersInput.value);
+                    if (isNaN(minPlayers) || minPlayers < 2) {
+                        this.uiController.showError("Please enter a valid number of minimum players (at least 2).");
+                        return;
+                    }
+                    
+                    // Visual feedback
+                    this.setMinPlayersBtn.disabled = true;
+                    this.setMinPlayersBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Updating...';
+                    
+                    // Set up transaction callbacks
+                    this.contractInteraction.setCallbacks({
+                        onPending: (message) => {
+                            this.uiController.showPending(message);
+                        },
+                        onReceipt: (receipt) => {
+                            console.log("Transaction confirmed in block:", receipt.blockNumber);
+                        },
+                        onConfirmation: (confirmationNumber, receipt) => {
+                            this.uiController.showSuccess(`Minimum players updated to ${minPlayers}!`);
+                            this.uiController.showNotification("Minimum players has been updated", "success");
+                            
+                            // Clear the input
+                            this.minPlayersInput.value = '';
+                            
+                            // Refresh data to show the updated min players
+                            this.app.refreshData();
+                            
+                            // Reset button
+                            this.setMinPlayersBtn.disabled = false;
+                            this.setMinPlayersBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Update Min Players';
+                        },
+                        onError: (errorMessage) => {
+                            this.uiController.showError(`Failed to update minimum players: ${errorMessage}`);
+                            
+                            // Reset button
+                            this.setMinPlayersBtn.disabled = false;
+                            this.setMinPlayersBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Update Min Players';
+                        }
+                    });
+                    
+                    // Update minimum players
+                    await this.contractInteraction.setMinPlayers(minPlayers);
+                    
+                } catch (error) {
+                    console.error("Failed to update minimum players:", error);
+                    this.uiController.showError(`Failed to update minimum players: ${error.message}`);
+                    
+                    // Reset button
+                    this.setMinPlayersBtn.disabled = false;
+                    this.setMinPlayersBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Update Min Players';
+                }
+            });
+        }
+
+        // Withdraw Admin Fees button
         if (this.withdrawFeesBtn) {
             this.withdrawFeesBtn.addEventListener('click', async () => {
                 try {
@@ -499,10 +734,10 @@ class EventHandlers {
                             console.log("Transaction confirmed in block:", receipt.blockNumber);
                         },
                         onConfirmation: (confirmationNumber, receipt) => {
-                            this.uiController.showSuccess("Admin fees withdrawn successfully!");
-                            this.uiController.showNotification("Admin fees have been withdrawn to your wallet", "success");
+                            this.uiController.showSuccess("Admin fees successfully withdrawn!");
+                            this.uiController.showNotification("Admin fees have been withdrawn", "success");
                             
-                            // Refresh data
+                            // Refresh data to show updated balances
                             this.app.refreshData();
                             
                             // Reset button
@@ -510,7 +745,7 @@ class EventHandlers {
                             this.withdrawFeesBtn.innerHTML = '<i class="bi bi-cash-stack me-2"></i>Withdraw Admin Fees';
                         },
                         onError: (errorMessage) => {
-                            this.uiController.showError(`Failed to withdraw fees: ${errorMessage}`);
+                            this.uiController.showError(`Failed to withdraw admin fees: ${errorMessage}`);
                             
                             // Reset button
                             this.withdrawFeesBtn.disabled = false;
@@ -531,79 +766,8 @@ class EventHandlers {
                 }
             });
         }
-        
-        // Set up Set Min Players button
-        if (this.setMinPlayersBtn && this.minPlayersInput) {
-            this.setMinPlayersBtn.addEventListener('click', async () => {
-                try {
-                    if (!this.web3Provider.isWriteConnected) {
-                        this.uiController.showError("Please connect your wallet first.");
-                        return;
-                    }
-                    
-                    const isOwner = await this.contractInteraction.isOwner();
-                    if (!isOwner) {
-                        this.uiController.showError("Only the contract owner can set the minimum players.");
-                        return;
-                    }
-                    
-                    // Get and validate the new min players value
-                    const minPlayers = parseInt(this.minPlayersInput.value);
-                    if (isNaN(minPlayers) || minPlayers < 2) {
-                        this.uiController.showError("Please enter a valid number of minimum players (at least 2).");
-                        return;
-                    }
-                    
-                    // Visual feedback
-                    this.setMinPlayersBtn.disabled = true;
-                    this.setMinPlayersBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Updating...';
-                    
-                    // Set up transaction callbacks
-                    this.contractInteraction.setCallbacks({
-                        onPending: (message) => {
-                            this.uiController.showPending(message);
-                        },
-                        onReceipt: (receipt) => {
-                            console.log("Transaction confirmed in block:", receipt.blockNumber);
-                        },
-                        onConfirmation: (confirmationNumber, receipt) => {
-                            this.uiController.showSuccess(`Minimum players updated to ${minPlayers}!`);
-                            this.uiController.showNotification("Minimum players requirement has been updated", "success");
-                            
-                            // Clear the input
-                            this.minPlayersInput.value = '';
-                            
-                            // Refresh data after setting new min players
-                            this.app.refreshData();
-                            
-                            // Reset button
-                            this.setMinPlayersBtn.disabled = false;
-                            this.setMinPlayersBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Update Min Players';
-                        },
-                        onError: (errorMessage) => {
-                            this.uiController.showError(`Failed to update minimum players: ${errorMessage}`);
-                            
-                            // Reset button
-                            this.setMinPlayersBtn.disabled = false;
-                            this.setMinPlayersBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Update Min Players';
-                        }
-                    });
-                    
-                    // Set the new minimum players
-                    await this.contractInteraction.setMinPlayers(minPlayers);
-                    
-                } catch (error) {
-                    console.error("Failed to set minimum players:", error);
-                    this.uiController.showError(`Failed to set minimum players: ${error.message}`);
-                    
-                    // Reset button
-                    this.setMinPlayersBtn.disabled = false;
-                    this.setMinPlayersBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Update Min Players';
-                }
-            });
-        }
     }
-    
+
     // Setup refresh events
     _setupRefreshEvents() {
         // Refresh data button
@@ -636,4 +800,194 @@ class EventHandlers {
             this.app.refreshData();
         }, 30000);
     }
-} 
+
+    // Setup Ganache account selector
+    _setupGanacheAccountSelector() {
+        // Create the ganacheAccountsTable if it doesn't exist already
+        const ganacheAccountsTable = document.getElementById('ganacheAccountsTable');
+        if (!ganacheAccountsTable) {
+            console.error("Ganache accounts table not found in the DOM");
+            return;
+        }
+    }
+
+    // Populate the Ganache accounts table
+    async _populateGanacheAccountsTable(accounts) {
+        const ganacheAccountsTable = document.getElementById('ganacheAccountsTable');
+        if (!ganacheAccountsTable) {
+            console.error("Ganache accounts table not found in the DOM");
+            return;
+        }
+        
+        // Get the currently selected account
+        const currentAccount = this.web3Provider.userAccount;
+        console.log("Currently selected account:", currentAccount);
+        
+        // Try to get the contract owner address
+        let ownerAddress = null;
+        try {
+            if (this.contractInteraction && this.web3Provider.readContract) {
+                ownerAddress = await this.contractInteraction.getOwnerAddress();
+                console.log("Contract owner address:", ownerAddress);
+            } else {
+                console.log("Contract interaction not available, can't get owner address");
+            }
+        } catch (error) {
+            console.error("Error getting contract owner:", error);
+        }
+        
+        // Clear the table
+        ganacheAccountsTable.innerHTML = '';
+        
+        // Add each account to the table
+        accounts.forEach((account, index) => {
+            const row = document.createElement('tr');
+            const isSelected = currentAccount && currentAccount.toLowerCase() === account.address.toLowerCase();
+            const isOwner = ownerAddress && ownerAddress.toLowerCase() === account.address.toLowerCase();
+            
+            row.className = isSelected ? 'table-primary' : ''; // Highlight the selected account
+            
+            row.innerHTML = `
+                <td>
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <span class="badge bg-secondary">${index}</span>
+                        </div>
+                        <div>
+                            <div class="fw-bold">${account.shortAddress} ${isOwner ? '<span class="badge bg-danger ms-1">Contract Owner</span>' : ''}</div>
+                            <div class="text-muted small">${account.address}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="align-middle">
+                    <span class="badge bg-success">${account.balance} ETH</span>
+                </td>
+                <td class="align-middle">
+                    <button class="btn btn-sm ${isSelected ? 'btn-success' : 'btn-primary'} btnUseAccount" data-address="${account.address}">
+                        ${isSelected ? '<i class="bi bi-check-circle me-1"></i> Selected' : 'Use Account'}
+                    </button>
+                </td>
+            `;
+            
+            ganacheAccountsTable.appendChild(row);
+        });
+        
+        // Add event listeners to the "Use Account" buttons
+        document.querySelectorAll('.btnUseAccount').forEach(button => {
+            button.addEventListener('click', async (event) => {
+                const accountAddress = event.currentTarget.getAttribute('data-address');
+                
+                // Highlight the selected row
+                document.querySelectorAll('#ganacheAccountsTable tr').forEach(row => {
+                    row.className = '';
+                });
+                event.currentTarget.closest('tr').className = 'table-primary';
+                
+                // Update all buttons
+                document.querySelectorAll('.btnUseAccount').forEach(btn => {
+                    btn.className = 'btn btn-sm btn-primary btnUseAccount';
+                    btn.innerHTML = 'Use Account';
+                });
+                
+                // Update this button
+                event.currentTarget.className = 'btn btn-sm btn-success btnUseAccount';
+                event.currentTarget.innerHTML = '<i class="bi bi-check-circle me-1"></i> Selected';
+                
+                // Set the selected account in web3Provider
+                this.web3Provider.userAccount = accountAddress;
+                this.web3Provider.isWriteConnected = true;
+                
+                // Find the balance from the row's data
+                const balanceElement = event.currentTarget.closest('tr').querySelector('.badge.bg-success');
+                let balance = null;
+                if (balanceElement) {
+                    const balanceText = balanceElement.textContent;
+                    balance = balanceText.replace(' ETH', '').trim();
+                }
+                
+                // Update connection status with the balance
+                this.uiController.updateConnectionStatus(true, accountAddress, balance);
+                
+                // Hide the modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('ganacheAccountSelectorModal'));
+                if (modal) {
+                    modal.hide();
+                }
+
+                try {
+                    // Try to connect to the Ganache account with contract validation
+                    await this.web3Provider.connectToGanacheAccount(accountAddress);
+                    
+                    // Reset lottery join button state
+                    const joinButton = document.getElementById('joinLotteryBtn');
+                    if (joinButton) {
+                        joinButton.disabled = false;
+                        joinButton.textContent = 'Join Lottery';
+                        joinButton.classList.add('btn-primary');
+                        joinButton.classList.remove('btn-success');
+                    }
+                    
+                    // Force a complete refresh of data for the new account
+                    await this.app.refreshData(true);
+                } catch (error) {
+                    console.error("Error connecting to Ganache account:", error);
+                    this.uiController.showError(error.message || "Failed to connect to Ganache account");
+                }
+            });
+        });
+    }
+
+    // Setup Ganache-specific events 
+    _setupGanacheEvents() {
+        // Show/hide the Ganache account selector button based on the network
+        this._updateGanacheUI();
+        
+        // Ganache account selector button
+        if (this.ganacheAccountSelectorBtn) {
+            this.ganacheAccountSelectorBtn.addEventListener('click', async () => {
+                if (CONFIG.CHAIN_ID === "0x539") {
+                    // Get Ganache accounts
+                    const accounts = await this.web3Provider.getGanacheAccounts();
+                    
+                    // Populate and show the modal
+                    await this._populateGanacheAccountsTable(accounts);
+                    const modal = new bootstrap.Modal(document.getElementById('ganacheAccountSelectorModal'));
+                    modal.show();
+                } else {
+                    this.uiController.showWarning("Ganache account selector is only available on Ganache network");
+                }
+            });
+        }
+    }
+
+    // Update Ganache UI elements based on current network
+    _updateGanacheUI() {
+        // Handle Ganache account selector button
+        if (this.ganacheAccountSelectorBtn) {
+            // Only show the button on Ganache network
+            this.ganacheAccountSelectorBtn.style.display = CONFIG.CHAIN_ID === "0x539" ? 'inline-block' : 'none';
+        }
+        
+        // Handle Connect Wallet button on Ganache network
+        if (this.connectWalletBtn) {
+            if (CONFIG.CHAIN_ID === "0x539") {
+                // When on Ganache network:
+                // - Hide the regular Connect Wallet button
+                // - Show the Ganache account selector button
+                this.connectWalletBtn.style.display = 'none';
+                
+                // If just switched to Ganache, show a helpful message
+                if (!this.web3Provider.isWriteConnected) {
+                    // First time on Ganache, show a message to use the Ganache account selector
+                    this.uiController.showStatus(
+                        'You are now on Ganache network. Please use the "Ganache Accounts" button to select an account.',
+                        'info'
+                    );
+                }
+            } else {
+                // On other networks, always show the regular Connect Wallet button
+                this.connectWalletBtn.style.display = 'inline-block';
+            }
+        }
+    }
+}

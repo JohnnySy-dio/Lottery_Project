@@ -10,6 +10,8 @@ class UIController {
         
         // User info elements
         this.userAccountDisplay = document.getElementById('userAccount');
+        this.userBalanceDisplay = document.getElementById('userBalance');
+        this.userFullAddressDisplay = document.getElementById('userFullAddress');
         this.networkDisplay = document.getElementById('networkName');
         this.connectionStatus = document.getElementById('connectionStatus');
         
@@ -67,7 +69,7 @@ class UIController {
     }
     
     // Display connection status
-    updateConnectionStatus(isConnected, account = null) {
+    updateConnectionStatus(isConnected, account = null, balance = null) {
         if (this.connectionStatus) {
             if (isConnected && account) {
                 this.connectionStatus.textContent = 'Connected';
@@ -76,6 +78,28 @@ class UIController {
                 if (this.userAccountDisplay) {
                     const shortenedAccount = `${account.substring(0, 6)}...${account.substring(account.length - 4)}`;
                     this.userAccountDisplay.textContent = shortenedAccount;
+                    
+                    // Setup click listener to toggle full address display
+                    if (!this.userAccountDisplay.hasClickListener) {
+                        this.userAccountDisplay.addEventListener('click', () => {
+                            if (this.userFullAddressDisplay) {
+                                this.userFullAddressDisplay.classList.toggle('d-none');
+                            }
+                        });
+                        this.userAccountDisplay.hasClickListener = true;
+                    }
+                    
+                    // Show full address
+                    if (this.userFullAddressDisplay) {
+                        this.userFullAddressDisplay.textContent = account;
+                        this.userFullAddressDisplay.classList.add('d-none'); // Hidden by default
+                    }
+                    
+                    // Show balance if available
+                    if (this.userBalanceDisplay && balance) {
+                        this.userBalanceDisplay.textContent = `Balance: ${parseFloat(balance).toFixed(4)} ETH`;
+                        this.userBalanceDisplay.style.display = 'block';
+                    }
                 }
             } else {
                 this.connectionStatus.textContent = 'Not Connected';
@@ -84,15 +108,43 @@ class UIController {
                 if (this.userAccountDisplay) {
                     this.userAccountDisplay.textContent = 'Not connected';
                 }
+                
+                // Hide balance and address
+                if (this.userBalanceDisplay) {
+                    this.userBalanceDisplay.style.display = 'none';
+                }
+                
+                if (this.userFullAddressDisplay) {
+                    this.userFullAddressDisplay.classList.add('d-none');
+                }
             }
         }
     }
     
-    // Update network status
-    updateNetworkStatus(networkName, isCorrectNetwork) {
+    // Update network status display
+    updateNetworkStatus(networkName, isSupportedNetwork) {
         if (this.networkDisplay) {
             this.networkDisplay.textContent = networkName;
-            this.networkDisplay.className = isCorrectNetwork ? 'badge bg-success' : 'badge bg-warning';
+            
+            // Update connection status based on network support
+            if (this.connectionStatus) {
+                if (isSupportedNetwork) {
+                    this.connectionStatus.className = "badge bg-success";
+                    this.connectionStatus.textContent = "Connected";
+                } else {
+                    this.connectionStatus.className = "badge bg-warning";
+                    this.connectionStatus.textContent = "Unsupported Network";
+                }
+            }
+            
+            // If we're on Ganache local network, show additional info
+            if (networkName === "Ganache Local") {
+                this.showStatus("You are on Ganache Local network. Use the 'Ganache Accounts' button to select an account.", "info");
+            }
+            
+            console.log(`Network status updated to: ${networkName} (Supported: ${isSupportedNetwork})`);
+        } else {
+            console.warn("Network display element not found");
         }
     }
     
@@ -151,18 +203,18 @@ class UIController {
         // Update prize pool
         if (this.prizePool && lotteryInfo.balance) {
             try {
-                // Initialize Web3 locally if needed
-                const web3Instance = window.web3 || new Web3();
-                
-                // Convert from wei to ETH and format
-                const ethValue = web3Instance.utils.fromWei(lotteryInfo.balance.toString(), 'ether');
-                this.prizePool.textContent = `${parseFloat(ethValue).toFixed(4)} ETH`;
-                console.log("Updated prize pool:", ethValue, "ETH from", lotteryInfo.balance, "wei");
+                if (window.web3Instance && window.web3Instance.utils) {
+                    const ethValue = window.web3Instance.utils.fromWei(lotteryInfo.balance.toString(), 'ether');
+                    this.prizePool.textContent = `${parseFloat(ethValue).toFixed(4)} ETH`;
+                } else {
+                    console.warn("web3Instance not available for fromWei conversion in prize pool, falling back to manual.");
+                    const ethValue = Number(lotteryInfo.balance / 1e18).toFixed(4);
+                    this.prizePool.textContent = `${ethValue} ETH`;
+                }
             } catch (error) {
                 console.error("Error converting prize pool:", error);
-                // Fallback conversion
                 const ethValue = Number(lotteryInfo.balance / 1e18).toFixed(4);
-                this.prizePool.textContent = `${ethValue} ETH`;
+                this.prizePool.textContent = `${ethValue} ETH`; // Fallback
             }
         }
         
@@ -193,18 +245,18 @@ class UIController {
     updateEntryFee(fee) {
         if (this.entryFee && fee) {
             try {
-                // Initialize Web3 locally if needed
-                const web3Instance = window.web3 || new Web3();
-                
-                // Convert from wei to ETH and format
-                const ethValue = web3Instance.utils.fromWei(fee.toString(), 'ether');
-                this.entryFee.textContent = `${parseFloat(ethValue).toFixed(4)} ETH`;
-                console.log("Updated entry fee:", ethValue, "ETH from", fee, "wei");
+                if (window.web3Instance && window.web3Instance.utils) {
+                    const ethValue = window.web3Instance.utils.fromWei(fee.toString(), 'ether');
+                    this.entryFee.textContent = `${parseFloat(ethValue).toFixed(4)} ETH`;
+                } else {
+                    console.warn("web3Instance not available for fromWei conversion in entry fee, falling back to manual.");
+                    const ethValue = Number(fee / 1e18).toFixed(4);
+                    this.entryFee.textContent = `${ethValue} ETH`;
+                }
             } catch (error) {
                 console.error("Error converting entry fee:", error);
-                // Fallback conversion
                 const ethValue = Number(fee / 1e18).toFixed(4);
-                this.entryFee.textContent = `${ethValue} ETH`;
+                this.entryFee.textContent = `${ethValue} ETH`; // Fallback
             }
         }
     }
