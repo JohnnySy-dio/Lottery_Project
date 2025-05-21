@@ -7,9 +7,9 @@ const CONFIG = {
     // Multi-network contract addresses
     CONTRACTS: {
         // Sepolia testnet
-        "0xaa36a7": "0xa9684d2C0Da71d1F3107cf9d45CcD57e5a528C30",
+        "0xaa36a7": "0x9439Fe9771c48De0E36514CC5E746398059d7b4E",
         // Ganache local
-        "0x539": "0x557bC432D9D2BcbE16CeB1202C9Bd8236410A424",  // Will be updated after local deployment
+        "0x539": "0xB8dC1621DA97a5135be3eae50547B7527FE4a9Ff",  // Will be updated after local deployment
         // Add more networks as needed
     },
     
@@ -82,6 +82,7 @@ const CONFIG = {
         {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"hasEntered","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
         {"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"lotteryHistory","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
         {"inputs":[],"name":"adminFees","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+        {"inputs":[],"name":"contractPaused","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
         
         // Write functions
         {"inputs":[],"name":"enterLottery","outputs":[],"stateMutability":"payable","type":"function"},
@@ -91,6 +92,9 @@ const CONFIG = {
         {"inputs":[{"internalType":"uint256","name":"_fee","type":"uint256"}],"name":"setEntryFee","outputs":[],"stateMutability":"nonpayable","type":"function"},
         {"inputs":[],"name":"withdrawAdminFees","outputs":[],"stateMutability":"nonpayable","type":"function"},
         {"inputs":[{"internalType":"uint256","name":"_minPlayers","type":"uint256"}],"name":"setMinPlayers","outputs":[],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[{"internalType":"bool","name":"_paused","type":"bool"}],"name":"setEmergencyStop","outputs":[],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[],"name":"commitRandomness","outputs":[],"stateMutability":"nonpayable","type":"function"},
         
         // Events
         {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"player","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"lotteryId","type":"uint256"}],"name":"PlayerEntered","type":"event"},
@@ -98,7 +102,10 @@ const CONFIG = {
         {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"lotteryId","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"timestamp","type":"uint256"}],"name":"LotteryOpened","type":"event"},
         {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"lotteryId","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"timestamp","type":"uint256"}],"name":"LotteryClosed","type":"event"},
         {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"newFee","type":"uint256"}],"name":"EntryFeesUpdated","type":"event"},
-        {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"AdminFeesWithdrawn","type":"event"}
+        {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"AdminFeesWithdrawn","type":"event"},
+        {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},
+        {"anonymous":false,"inputs":[{"indexed":false,"internalType":"bool","name":"isPaused","type":"bool"}],"name":"EmergencyStop","type":"event"},
+        {"anonymous":false,"inputs":[{"indexed":true,"internalType":"bytes32","name":"commitmentHash","type":"bytes32"}],"name":"RandomnessCommitted","type":"event"}
     ],
     
     // UI settings

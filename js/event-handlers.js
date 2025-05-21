@@ -25,16 +25,23 @@ class EventHandlers {
         this.minPlayersInput = document.getElementById('minPlayersInput');
         this.networkSelector = document.getElementById('networkSelector');
         this.ganacheAccountSelectorBtn = document.getElementById('ganacheAccountSelectorBtn');
+        this.commitRandomnessBtn = document.getElementById('commitRandomnessBtn');
     }
     
     // Initialize all event listeners
     setupEventListeners() {
+        console.log("Setting up event listeners...");
+        
+        // Get button elements
         this._setupWalletConnectionEvents();
         this._setupNetworkSelectionEvents();
         this._setupLotteryActions();
         this._setupAdminActions();
         this._setupRefreshEvents();
         this._setupGanacheEvents();
+        this._setupMiscActions();
+        
+        console.log("Event listeners set up successfully!");
     }
     
     // Setup wallet connection events
@@ -426,13 +433,13 @@ class EventHandlers {
                     
                     const isOwner = await this.contractInteraction.isOwner();
                     if (!isOwner) {
-                        this.uiController.showError("Only the contract owner can start a new lottery.");
+                        this.uiController.showError("Only the contract owner can open the lottery.");
                         return;
                     }
                     
                     // Visual feedback
                     this.startLotteryBtn.disabled = true;
-                    this.startLotteryBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Starting...';
+                    this.startLotteryBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Opening...';
                     
                     // Set up transaction callbacks
                     this.contractInteraction.setCallbacks({
@@ -443,35 +450,35 @@ class EventHandlers {
                             console.log("Transaction confirmed in block:", receipt.blockNumber);
                         },
                         onConfirmation: (confirmationNumber, receipt) => {
-                            this.uiController.showSuccess("New lottery started successfully!");
-                            this.uiController.showNotification("New lottery round has been created", "success");
+                            this.uiController.showSuccess("Lottery opened successfully!");
+                            this.uiController.showNotification("Lottery has been opened", "success");
                             
-                            // Refresh data after starting
+                            // Refresh data after opening
                             this.app.refreshData();
                             
                             // Reset button
                             this.startLotteryBtn.disabled = false;
-                            this.startLotteryBtn.textContent = 'Start New Lottery';
+                            this.startLotteryBtn.textContent = 'Open Lottery';
                         },
                         onError: (errorMessage) => {
-                            this.uiController.showError(`Failed to start new lottery: ${errorMessage}`);
+                            this.uiController.showError(`Failed to open lottery: ${errorMessage}`);
                             
                             // Reset button
                             this.startLotteryBtn.disabled = false;
-                            this.startLotteryBtn.textContent = 'Start New Lottery';
+                            this.startLotteryBtn.textContent = 'Open Lottery';
                         }
                     });
                     
-                    // Start new lottery
-                    await this.contractInteraction.startNewLottery();
+                    // Open lottery
+                    await this.contractInteraction.openLottery();
                     
                 } catch (error) {
-                    console.error("Failed to start new lottery:", error);
-                    this.uiController.showError(`Failed to start new lottery: ${error.message}`);
+                    console.error("Failed to open lottery:", error);
+                    this.uiController.showError(`Failed to open lottery: ${error.message}`);
                     
                     // Reset button
                     this.startLotteryBtn.disabled = false;
-                    this.startLotteryBtn.textContent = 'Start New Lottery';
+                    this.startLotteryBtn.textContent = 'Open Lottery';
                 }
             });
         }
@@ -576,19 +583,19 @@ class EventHandlers {
                             
                             // Reset button
                             this.pickWinnerBtn.disabled = false;
-                            this.pickWinnerBtn.textContent = 'Pick Winner';
+                            this.pickWinnerBtn.textContent = 'Step 2: Pick Winner';
                         },
                         onError: (errorMessage) => {
                             this.uiController.showError(`Failed to pick winner: ${errorMessage}`);
                             
                             // Reset button
                             this.pickWinnerBtn.disabled = false;
-                            this.pickWinnerBtn.textContent = 'Pick Winner';
+                            this.pickWinnerBtn.textContent = 'Step 2: Pick Winner';
                         }
                     });
                     
-                    // Pick winner
-                    await this.contractInteraction.pickWinner(lotteryId);
+                    // Pick winner using the app's method which includes additional safeguards
+                    await this.app.pickWinner();
                     
                 } catch (error) {
                     console.error("Failed to pick winner:", error);
@@ -596,7 +603,78 @@ class EventHandlers {
                     
                     // Reset button
                     this.pickWinnerBtn.disabled = false;
-                    this.pickWinnerBtn.textContent = 'Pick Winner';
+                    this.pickWinnerBtn.textContent = 'Step 2: Pick Winner';
+                }
+            });
+        }
+
+        // Commit randomness button
+        if (this.commitRandomnessBtn) {
+            this.commitRandomnessBtn.addEventListener('click', async () => {
+                try {
+                    if (!this.web3Provider.isWriteConnected) {
+                        this.uiController.showError("Please connect your wallet first.");
+                        return;
+                    }
+                    
+                    const isOwner = await this.contractInteraction.isOwner();
+                    if (!isOwner) {
+                        this.uiController.showError("Only the contract owner can commit randomness.");
+                        return;
+                    }
+                    
+                    // Visual feedback
+                    this.commitRandomnessBtn.disabled = true;
+                    this.commitRandomnessBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Committing...';
+                    
+                    // Set up transaction callbacks
+                    this.contractInteraction.setCallbacks({
+                        onPending: (message) => {
+                            this.uiController.showPending(message);
+                        },
+                        onReceipt: (receipt) => {
+                            console.log("Transaction confirmed in block:", receipt.blockNumber);
+                            
+                            // Start the countdown timer here too, in case it wasn't started yet
+                            this.app.hasCommittedRandomness = true;
+                            this.app.randomnessCommitTime = Date.now();
+                            this.app.startPickWinnerTimer();
+                        },
+                        onConfirmation: (confirmationNumber, receipt) => {
+                            this.uiController.showSuccess("Randomness commitment successful! Please wait at least 1 minute before picking the winner. This delay ensures fair randomness selection.");
+                            this.uiController.showNotification("Randomness committed! Wait 1 minute before step 2.", "success");
+                            
+                            // Refresh data after committing randomness
+                            this.app.refreshData();
+                            
+                            // Reset button
+                            this.commitRandomnessBtn.disabled = false;
+                            this.commitRandomnessBtn.textContent = 'Step 1: Commit Randomness';
+                        },
+                        onError: (errorMessage) => {
+                            this.uiController.showError(`Failed to commit randomness: ${errorMessage}`);
+                            
+                            // Reset button
+                            this.commitRandomnessBtn.disabled = false;
+                            this.commitRandomnessBtn.textContent = 'Step 1: Commit Randomness';
+                        }
+                    });
+                    
+                    // Commit randomness
+                    await this.contractInteraction.commitRandomness();
+                    
+                    // Start the countdown timer immediately after commit
+                    this.app.hasCommittedRandomness = true;
+                    this.app.randomnessCommitTime = Date.now();
+                    this.app.startPickWinnerTimer();
+                    
+                } catch (error) {
+                    console.error("Failed to commit randomness:", error);
+                    this.uiController.showError(`Failed to commit randomness: ${error.message}`);
+                    
+                    // Reset button
+                    this.commitRandomnessBtn.disabled = false;
+                    this.commitRandomnessBtn.textContent = 'Step 1: Commit Randomness';
                 }
             });
         }
@@ -1030,6 +1108,56 @@ class EventHandlers {
                 // On other networks, always show the regular Connect Wallet button
                 this.connectWalletBtn.style.display = 'inline-block';
             }
+        }
+    }
+
+    // Set up miscellaneous actions
+    _setupMiscActions() {
+        // Test timer button
+        const testTimerBtn = document.getElementById('testTimerBtn');
+        if (testTimerBtn) {
+            testTimerBtn.addEventListener('click', () => {
+                console.log("Test timer button clicked");
+                this.app.testCountdownTimer();
+            });
+        }
+        
+        // Add a CSP test button to the footer
+        const footer = document.querySelector('footer .container');
+        if (footer) {
+            const cspTestButton = document.createElement('button');
+            cspTestButton.id = 'cspTestBtn';
+            cspTestButton.className = 'btn btn-sm btn-outline-secondary mt-3';
+            cspTestButton.innerText = 'Test Content Security Policy';
+            
+            cspTestButton.addEventListener('click', () => {
+                console.log("Testing CSP compliance...");
+                
+                // These actions should all be safe and work with CSP
+                try {
+                    // Test DOM manipulation
+                    const statusMessage = document.getElementById('statusMessage');
+                    if (statusMessage) {
+                        statusMessage.classList.remove('hidden');
+                        statusMessage.className = 'alert alert-info my-3';
+                        statusMessage.innerText = 'CSP Test: DOM manipulation successful!';
+                        
+                        setTimeout(() => {
+                            statusMessage.classList.add('hidden');
+                        }, 3000);
+                    }
+                    
+                    // Test countdown timer visibility
+                    this.app.testCountdownTimer();
+                    
+                    console.log("CSP tests passed!");
+                } catch (error) {
+                    console.error("CSP test failed:", error);
+                    alert("CSP test failed: " + error.message);
+                }
+            });
+            
+            footer.appendChild(cspTestButton);
         }
     }
 }
