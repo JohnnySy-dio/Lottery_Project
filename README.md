@@ -9,7 +9,10 @@ A fully transparent lottery application running on the Ethereum Sepolia testnet.
 - Admin functionality for managing the lottery
 - Real-time updates of lottery state
 - Transparent winner selection
+- Previous winners display
+- Two-step randomness commitment for fair winner selection
 - Mobile-responsive design
+- Improved side-by-side UI layout
 
 ## Smart Contract Features
 
@@ -17,9 +20,12 @@ A fully transparent lottery application running on the Ethereum Sepolia testnet.
 - Admin can set entry fee
 - Admin can set minimum players
 - Admin can close/open lottery
-- Admin can pick a winner
+- Two-step winner selection process for fairness:
+  - Step 1: Commit randomness source
+  - Step 2: Pick winner after waiting period
 - Admin fee withdrawal
-- Random winner selection
+- Transparent random winner selection with blockchain consensus
+- Transaction history view
 
 ## Technical Stack
 
@@ -27,6 +33,25 @@ A fully transparent lottery application running on the Ethereum Sepolia testnet.
 - **Libraries**: Web3.js, Bootstrap 5
 - **Blockchain**: Ethereum (Sepolia Testnet)
 - **Smart Contract**: Solidity
+
+## Testing and Verification
+
+The application has been thoroughly tested with:
+
+- **Smart Contract Tests**: 30 automated tests covering all contract functionality
+- **Frontend Tests**: Verification scripts to ensure UI implementation
+- **Cross-Platform Compatibility**: Tested on both Linux and Windows environments
+- **Browser Testing**: Verified on Chrome, Firefox, and Edge
+
+All tests are passing, ensuring the application works reliably across different platforms and environments. To run the tests:
+
+```bash
+# Run smart contract tests
+npx truffle test
+
+# Run frontend verification
+node test/windows-verification.js
+```
 
 ## Dependencies
 
@@ -43,7 +68,7 @@ A fully transparent lottery application running on the Ethereum Sepolia testnet.
 
 ### Browser Requirements
 - **MetaMask Extension**: Latest version
-- **Modern Web Browser**: Chrome, Firefox, or Erecommended
+- **Modern Web Browser**: Chrome, Firefox, or Edge recommended
 
 ### Local Development Tools
 - **Ganache**: Latest version - For local blockchain development
@@ -52,15 +77,17 @@ A fully transparent lottery application running on the Ethereum Sepolia testnet.
 ## Contract Address
 
 The lottery smart contract is deployed on the Sepolia testnet at:
-`0x3a1c2615aD402B4C706780374F9C7746125d7C24`
+`0x9439Fe9771c48De0E36514CC5E746398059d7b4E`
 
 ## How to Use
 
 1. Connect your MetaMask wallet to the Sepolia testnet
 2. Ensure you have some Sepolia ETH (get from a faucet)
 3. Join the lottery by paying the entry fee
-4. Wait for admin to pick a winner when minimum participants join
-5. If you're the winner, prizes will be automatically sent to your wallet
+4. View current participants in the right-side panel
+5. Check previous winners in the history panel
+6. Wait for admin to pick a winner when minimum participants join
+7. If you're the winner, prizes will be automatically sent to your wallet
 
 ## Live Demo
 

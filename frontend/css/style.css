@@ -12,6 +12,34 @@
     --dark-color: #2d3436;
 }
 
+/* Utility classes for elements that had inline styles */
+.hidden {
+    display: none !important;
+}
+
+.user-balance-hidden {
+    display: none;
+}
+
+/* Element-specific styles that had inline styles */
+#ganacheAccountSelectorBtn {
+    display: none;
+}
+
+#statusMessage {
+    display: none;
+}
+
+#adminActions {    /* Using .hidden class for toggling visibility instead of display:none */}
+
+#switchNetworkBtn {
+    display: none;
+}
+
+#userBalance {
+    display: none;
+}
+
 body {
     font-family: 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
     background-color: #f9f9f9;
@@ -151,6 +179,10 @@ main {
     display: none;
 }
 
+.loading-indicator:not(.hidden) {
+    display: inline-block;
+}
+
 .connection-status {
     padding: 0.5rem 1rem;
     border-radius: 6px;
@@ -190,6 +222,42 @@ main {
     top: 70px;
     right: 20px;
     z-index: 1060;
+}
+
+/* Countdown Timer */
+.countdown-timer {
+    position: fixed;
+    top: 70px;
+    right: 20px;
+    z-index: 99999;
+    background-color: #6c5ce7;
+    color: white;
+    padding: 15px 20px;
+    border-radius: 50px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    font-weight: bold;
+    font-size: 18px;
+    min-width: 200px;
+    text-align: center;
+    display: none;
+}
+
+.countdown-timer.visible {
+    display: block !important;
+}
+
+.countdown-timer.normal {
+    background-color: #6c5ce7;
+}
+
+.countdown-timer.urgent {
+    background-color: #d63031;
+}
+
+.countdown-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .toast {
@@ -315,4 +383,19 @@ footer a:hover {
         --light-color: #2d3436;
         --dark-color: #f8f9fa;
     }
+}
+
+/* Development mode badge */
+.development-mode-badge {
+    position: fixed;
+    top: 60px;
+    left: 0;
+    right: 0;
+    background-color: #FFC107;
+    color: #000;
+    text-align: center;
+    padding: 5px;
+    font-weight: bold;
+    z-index: 1000;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 } 

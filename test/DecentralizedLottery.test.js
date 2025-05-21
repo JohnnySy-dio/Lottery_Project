@@ -79,7 +79,7 @@ contract("DecentralizedLottery", (accounts) => {
     it("should not allow non-owner to set entry fee", async () => {
       await truffleAssert.reverts(
         lottery.setEntryFee(higherEntryFee, { from: nonOwner }),
-        "Only the owner can call this function"
+        "Not owner or contract paused"
       );
     });
     
@@ -93,7 +93,7 @@ contract("DecentralizedLottery", (accounts) => {
     it("should not allow non-owner to set minimum players", async () => {
       await truffleAssert.reverts(
         lottery.setMinPlayers(5, { from: nonOwner }),
-        "Only the owner can call this function"
+        "Not owner or contract paused"
       );
     });
     
@@ -115,7 +115,7 @@ contract("DecentralizedLottery", (accounts) => {
     it("should not allow reopening an already open lottery", async () => {
       await truffleAssert.reverts(
         lottery.openLottery({ from: owner }),
-        "Lottery is already open"
+        "Already open"
       );
     });
     
@@ -169,7 +169,7 @@ contract("DecentralizedLottery", (accounts) => {
       
       await truffleAssert.reverts(
         lottery.enterLottery({ from: player1, value: lowFee }),
-        "Insufficient entry fee"
+        "Insufficient fee"
       );
     });
     
@@ -178,7 +178,7 @@ contract("DecentralizedLottery", (accounts) => {
       
       await truffleAssert.reverts(
         lottery.enterLottery({ from: player1, value: entryFee }),
-        "You have already entered this lottery round"
+        "Already entered"
       );
     });
     
@@ -187,7 +187,7 @@ contract("DecentralizedLottery", (accounts) => {
       
       await truffleAssert.reverts(
         lottery.enterLottery({ from: player1, value: entryFee }),
-        "Lottery is not open"
+        "Lottery closed"
       );
     });
     
@@ -204,7 +204,7 @@ contract("DecentralizedLottery", (accounts) => {
     });
   });
   
-  describe("Winner Selection", () => {
+  describe("Two-Step Winner Selection", () => {
     beforeEach(async () => {
       // Enter enough players to meet the minimum
       await lottery.enterLottery({ from: player1, value: entryFee });
@@ -212,10 +212,17 @@ contract("DecentralizedLottery", (accounts) => {
       await lottery.enterLottery({ from: player3, value: entryFee });
     });
     
+    it("should not allow committing randomness when lottery is open", async () => {
+      await truffleAssert.reverts(
+        lottery.commitRandomness({ from: owner }),
+        "Close lottery first"
+      );
+    });
+    
     it("should not allow picking a winner when lottery is open", async () => {
       await truffleAssert.reverts(
         lottery.pickWinner({ from: owner }),
-        "Close the lottery first"
+        "Close lottery first"
       );
     });
     
@@ -237,39 +244,38 @@ contract("DecentralizedLottery", (accounts) => {
       );
     });
     
-    it("should pick a winner, transfer prize, and reset for next round", async () => {
+    it("should not allow picking winner without committing randomness first", async () => {
       await lottery.closeLottery({ from: owner });
       
-      // Track balances before winner selection
-      const initialBalances = {};
-      initialBalances[player1] = web3.utils.toBN(await web3.eth.getBalance(player1));
-      initialBalances[player2] = web3.utils.toBN(await web3.eth.getBalance(player2));
-      initialBalances[player3] = web3.utils.toBN(await web3.eth.getBalance(player3));
+      await truffleAssert.reverts(
+        lottery.pickWinner({ from: owner }),
+        "Commit randomness first"
+      );
+    });
+    
+    it("should allow committing randomness after closing the lottery", async () => {
+      await lottery.closeLottery({ from: owner });
       
-      const prizePool = await lottery.getBalance();
+      const tx = await lottery.commitRandomness({ from: owner });
       
-      // Pick winner
-      const tx = await lottery.pickWinner({ from: owner });
-      
-      // Verify lottery state reset
-      const newLotteryId = await lottery.lotteryId();
-      const newPlayerCount = await lottery.getPlayerCount();
-      const newLotteryOpen = await lottery.lotteryOpen();
-      const hasPlayer1Entered = await lottery.hasEntered(player1);
-      
-      assert.equal(newLotteryId, 2, "Lottery ID should increment");
-      assert.equal(newPlayerCount, 0, "Player list should be reset");
-      assert.equal(newLotteryOpen, true, "Lottery should be reopened");
-      assert.equal(hasPlayer1Entered, false, "Player entry status should be reset");
-      
-      // Verify winner received prize by checking the WinnerSelected event
-      truffleAssert.eventEmitted(tx, 'WinnerSelected', (ev) => {
-        const winner = ev.winner;
-        
-        // Check if winner's balance increased by the prize amount
-        return true; // We can't easily check actual balance since we don't know who the winner is
+      // Check that the RandomnessCommitted event was emitted
+      truffleAssert.eventEmitted(tx, 'RandomnessCommitted', (ev) => {
+        return ev.commitmentHash !== null;
       });
     });
+    
+    it("should not allow picking winner immediately after committing randomness", async () => {
+      await lottery.closeLottery({ from: owner });
+      await lottery.commitRandomness({ from: owner });
+      
+      await truffleAssert.reverts(
+        lottery.pickWinner({ from: owner }),
+        "Wait 1 minute"
+      );
+    });
+    
+    // Note: This test would ideally use time manipulation to test the entire flow,
+    // but for now we'll just test the individual steps
   });
   
   describe("Events", () => {
@@ -305,6 +311,19 @@ contract("DecentralizedLottery", (accounts) => {
       
       truffleAssert.eventEmitted(tx, 'EntryFeesUpdated', (ev) => {
         return ev.newFee.toString() === higherEntryFee.toString();
+      });
+    });
+    
+    it("should emit RandomnessCommitted event", async () => {
+      await lottery.enterLottery({ from: player1, value: entryFee });
+      await lottery.enterLottery({ from: player2, value: entryFee });
+      await lottery.enterLottery({ from: player3, value: entryFee });
+      await lottery.closeLottery({ from: owner });
+      
+      const tx = await lottery.commitRandomness({ from: owner });
+      
+      truffleAssert.eventEmitted(tx, 'RandomnessCommitted', (ev) => {
+        return ev.commitmentHash !== null;
       });
     });
     

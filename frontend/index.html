@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data:; connect-src 'self' wss: https: http://127.0.0.1:7545;">
     <title>Decentralized Ethereum Lottery</title>
     
     <!-- Bootstrap 5 CSS -->
@@ -22,74 +23,10 @@
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%236c5ce7' d='M12 0L5 7l2 2 5-5 5 5 2-2L12 0zm0 4L4 12l2 2 6-6 6 6 2-2-8-8zm0 8l-6 6 6 6 6-6-6-6z'/%3E%3C/svg%3E">
     
-    <!-- Prevent auto-reload script -->
-    <script>
-        // Override window.location.reload to prevent automatic page reloads
-        console.log("Initializing reload prevention...");
-        
-        // Store original reload function
-        window._originalReload = window.location.reload;
-        
-        // Override the reload function
-        window.location.reload = function(forceGet) {
-            console.log("🛑 Reload attempted - checking if prevention is active");
-            
-            // Check if we should prevent reloads
-            if (window.location.href.toLowerCase().includes('ganache') || 
-                localStorage.getItem('disableAutoReload') === 'true') {
-                console.log("🛑 Reload prevented by override");
-                return false;
-            } else {
-                console.log("✅ Reload allowed - not in prevention mode");
-                return window._originalReload(forceGet);
-            }
-        };
-        
-        // Add reset button to clear localStorage (visible in console only)
-        window.resetReloadPrevention = function() {
-            localStorage.removeItem('disableAutoReload');
-            localStorage.removeItem('lastGanacheSwitch');
-            sessionStorage.clear();
-            console.log("🔄 Reload prevention settings reset");
-        };
-        
-        // Set prevention flag based on URL
-        if (window.location.href.toLowerCase().includes('ganache')) {
-            localStorage.setItem('disableAutoReload', 'true');
-            console.log("🔒 Reload prevention activated based on URL");
-        }
-        
-        // Prevent MetaMask's default chain change behavior
-        window.addEventListener('load', function() {
-            if (window.ethereum) {
-                const originalOn = window.ethereum.on;
-                
-                window.ethereum.on = function(eventName, listener) {
-                    if (eventName === 'chainChanged') {
-                        console.log("🔧 Intercepted chainChanged event subscription");
-                        
-                        // Replace with our own handler that doesn't reload
-                        return originalOn.call(window.ethereum, eventName, function(chainId) {
-                            console.log("⛓️ Chain changed to:", chainId);
-                            console.log("🛑 Preventing MetaMask's automatic page reload");
-                            
-                            // Call the original listener but prevent any reloads it might trigger
-                            try {
-                                listener(chainId);
-                            } catch (error) {
-                                console.error("Error in chainChanged handler:", error);
-                            }
-                        });
-                    } else {
-                        // For other events, use the original behavior
-                        return originalOn.call(window.ethereum, eventName, listener);
-                    }
-                };
-                
-                console.log("🔒 MetaMask chainChanged event modified to prevent reloads");
-            }
-        });
-    </script>
+    <!-- Countdown Timer Styles in external CSS -->
+    
+    <!-- Prevent auto-reload script - moved to external file -->
+    <script src="js/reload-prevention.js"></script>
 </head>
 <body>
     <!-- Navigation -->
@@ -132,16 +69,16 @@
                     </span>
                     <div class="me-3 user-account-container">
                         <div id="userAccount" class="user-account">Not connected</div>
-                        <div id="userBalance" class="user-balance small text-muted" style="display: none;"></div>
+                        <div id="userBalance" class="user-balance small text-muted">0 ETH</div>
                         <div id="userFullAddress" class="user-full-address small text-monospace d-none"></div>
                     </div>
                     <button id="connectWalletBtn" class="btn btn-primary">
                         <i class="bi bi-wallet2"></i> Connect Wallet
                     </button>
-                    <button id="switchNetworkBtn" class="btn btn-warning ms-2" style="display: none;">
+                    <button id="switchNetworkBtn" class="btn btn-warning ms-2">
                         Switch Network
                     </button>
-                    <button id="ganacheAccountSelectorBtn" class="btn btn-info ms-2" style="display: none;">
+                    <button id="ganacheAccountSelectorBtn" class="btn btn-info ms-2">
                         <i class="bi bi-person-circle"></i> Ganache Accounts
                     </button>
         </div>
@@ -160,10 +97,11 @@
     <!-- Main Content -->
     <main class="container">
         <!-- Status Messages -->
-        <div id="statusMessage" class="alert alert-info my-3" style="display: none;"></div>
+        <div id="statusMessage" class="alert alert-info my-3"></div>
 
-        <!-- Current Lottery Info -->
+        <!-- Main content row with two columns -->
         <div class="row">
+            <!-- Left column: Lottery Info -->
             <div class="col-lg-8 mb-4">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
@@ -202,7 +140,7 @@
                                 <div class="info-item-label">Prize Pool</div>
                                 <div class="info-item-value" id="prizePool">0 ETH</div>
                             </div>
-                            <div class="info-item" style="display: none;">
+                            <div class="info-item hidden">
                                 <div class="info-item-label">Winner</div>
                                 <div class="info-item-value" id="winner">No winner yet</div>
                             </div>
@@ -215,12 +153,12 @@
                                 Join Lottery
                                 <span class="loading-indicator spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
                             </button>
+                        </div>
                     </div>
                 </div>
-            </div>
 
                 <!-- Admin Actions -->
-                <div id="adminActions" class="card mt-4" style="display: none;">
+                <div id="adminActions" class="card mt-4">
                     <div class="card-header">
                         <h5 class="mb-0">
                             <i class="bi bi-shield-lock me-2"></i>
@@ -228,10 +166,19 @@
                         </h5>
                     </div>
                     <div class="card-body">
+                        <!-- Randomness explanation panel -->
+                        <div class="alert alert-info mb-3">
+                            <h6 class="alert-heading"><i class="bi bi-info-circle-fill me-2"></i>Two-Step Winner Selection Process</h6>
+                            <p class="mb-1"><strong>Step 1: Commit Randomness</strong> - Creates a commitment to a source of randomness that cannot be manipulated.</p>
+                            <p class="mb-1"><strong>Step 2: Pick Winner</strong> - Uses the committed randomness after a 1-minute delay to select a winner fairly.</p>
+                            <hr>
+                            <p class="mb-0 small">The two-step process with a time delay prevents manipulation because the contract owner cannot know the future blockchain state when committing to a randomness source.</p>
+                        </div>
+                        
                         <div class="d-flex justify-content-center gap-3 mb-3">
                             <button id="startLotteryBtn" class="btn btn-success">
-                                <i class="bi bi-plus-circle me-2"></i>
-                                Start New Lottery
+                                <i class="bi bi-play-circle me-2"></i>
+                                Open Lottery
                                 <span class="loading-indicator spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
                             </button>
                             <button id="closeLotteryBtn" class="btn btn-danger">
@@ -239,9 +186,14 @@
                                 Close Lottery
                                 <span class="loading-indicator spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
                             </button>
+                            <button id="commitRandomnessBtn" class="btn btn-info">
+                                <i class="bi bi-shield-lock me-2"></i>
+                                Step 1: Commit Randomness
+                                <span class="loading-indicator spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
+                            </button>
                             <button id="pickWinnerBtn" class="btn btn-warning">
                                 <i class="bi bi-trophy me-2"></i>
-                                Pick Winner
+                                Step 2: Pick Winner
                                 <span class="loading-indicator spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
                             </button>
                         </div>
@@ -262,49 +214,49 @@
                                         <div class="input-group mb-3">
                                             <input type="number" id="newEntryFeeInput" class="form-control" placeholder="Fee in ETH" min="0.0001" step="0.0001">
                                             <span class="input-group-text">ETH</span>
-                    </div>
+                                        </div>
                                         <button id="setEntryFeeBtn" class="btn btn-primary w-100">
                                             <i class="bi bi-check-circle me-2"></i>
                                             Update Fee
                                             <span class="loading-indicator spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
                                         </button>
-                </div>
-            </div>
-        </div>
+                                    </div>
+                                </div>
+                            </div>
 
                             <!-- Set Min Players -->
                             <div class="col-md-4 mb-3">
-                <div class="card">
+                                <div class="card">
                                     <div class="card-header bg-light">
                                         <h6 class="mb-0">
                                             <i class="bi bi-people-fill me-2"></i>
                                             Set Min Players
                                         </h6>
-                    </div>
-                    <div class="card-body">
+                                    </div>
+                                    <div class="card-body">
                                         <div class="input-group mb-3">
                                             <input type="number" id="minPlayersInput" class="form-control" placeholder="Min players" min="2" step="1">
                                             <span class="input-group-text">Players</span>
-                            </div>
+                                        </div>
                                         <button id="setMinPlayersBtn" class="btn btn-primary w-100">
                                             <i class="bi bi-check-circle me-2"></i>
                                             Update Min Players
                                             <span class="loading-indicator spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
                                         </button>
-                </div>
-            </div>
-        </div>
+                                    </div>
+                                </div>
+                            </div>
 
                             <!-- Withdraw Admin Fees -->
                             <div class="col-md-4 mb-3">
-                <div class="card">
+                                <div class="card">
                                     <div class="card-header bg-light">
                                         <h6 class="mb-0">
                                             <i class="bi bi-cash-coin me-2"></i>
                                             Admin Fees
                                         </h6>
-                    </div>
-                    <div class="card-body">
+                                    </div>
+                                    <div class="card-body">
                                         <p class="card-text mb-3">
                                             Accumulated admin fees: <span id="adminFeesAmount" class="badge bg-success">0 ETH</span>
                                         </p>
@@ -314,48 +266,72 @@
                                                 Withdraw Admin Fees
                                                 <span class="loading-indicator spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
                                             </button>
-                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-
-            <!-- Participants Section -->
-            <div class="col-lg-4">
-                <div class="card">
+            
+            <!-- Right column: Participants Table -->
+            <div class="col-lg-4 mb-4">
+                <!-- Current Participants -->
+                <div id="participantsTable" class="card mb-4">
                     <div class="card-header">
                         <h5 class="mb-0">
                             <i class="bi bi-people-fill me-2"></i>
-                            Participants
+                            Current Participants
                         </h5>
                     </div>
                     <div class="card-body">
-                        <div id="participantsTable">
-                            <div class="table-responsive">
-                                <table class="table">
-                                    <thead>
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Address</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="participantsTableBody">
-                                        <!-- Participants will be dynamically added here -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div id="noParticipantsMessage" class="text-center text-muted">
-                            <i class="bi bi-people"></i>
-                            <p>No participants yet. Be the first to join!</p>
-                        </div>
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Address</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="participantsTableBody">
+                                <!-- Will be populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Previous Winners -->
+                <div id="winnersTable" class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-trophy-fill me-2"></i>
+                            Previous Winners
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Lottery #</th>
+                                    <th>Winner</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="winnersTableBody">
+                                <!-- Will be populated dynamically -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
+        </div>
+        
+        <!-- Test Timer Visibility Button (for debugging) -->
+        <div class="mt-3">
+            <button id="testTimerBtn" class="btn btn-secondary">
+                <i class="bi bi-clock"></i> Test Timer Visibility
+            </button>
         </div>
     </main>
 
@@ -391,6 +367,16 @@
 
     <!-- Toast Container for Notifications -->
     <div id="toastContainer"></div>
+
+    <!-- Countdown Timer -->
+    <div id="countdownTimer" class="countdown-timer">
+        <div class="countdown-content">
+            <i class="bi bi-hourglass-split me-2"></i>
+            <span id="countdownText">Waiting: 60s</span>
+        </div>
+    </div>
+    
+    <!-- Inline script to ensure the timer is visible - moved to external file -->
 
     <!-- Ganache Account Selector Modal -->
     <div class="modal fade" id="ganacheAccountSelectorModal" tabindex="-1" aria-labelledby="ganacheAccountSelectorModalLabel" aria-hidden="true">
@@ -450,54 +436,7 @@
     <script src="js/event-handlers.js"></script>
     <script src="js/app.js"></script>
     
-    <!-- Debug script to immediately set contract address -->
-    <script>
-        // Dynamically update network-specific information
-        document.addEventListener('DOMContentLoaded', function() {
-            // Function to update UI based on current network
-            function updateNetworkUI() {
-                // Set contract address in footer - make sure to handle undefined
-                const contractAddress = CONFIG.CONTRACT_ADDRESS || "Not deployed yet";
-                document.getElementById('footerContractAddress').textContent = contractAddress;
-                
-                // Set appropriate explorer links based on network
-                let explorerUrl;
-                if (CONFIG.CHAIN_ID === "0xaa36a7") {
-                    explorerUrl = 'https://sepolia.etherscan.io/address/' + CONFIG.CONTRACT_ADDRESS;
-                    document.getElementById('etherscanLink').textContent = "View on Etherscan";
-                    document.getElementById('footerEtherscanLink').textContent = "Etherscan";
-                } else if (CONFIG.CHAIN_ID === "0x539") {
-                    // For Ganache, we should check if the contract is deployed
-                    if (CONFIG.CONTRACT_ADDRESS && CONFIG.CONTRACT_ADDRESS !== "") {
-                        explorerUrl = '#'; // Ganache doesn't have an explorer
-                        document.getElementById('etherscanLink').textContent = "Local Network (Deployed)";
-                    } else {
-                        explorerUrl = '#';
-                        document.getElementById('etherscanLink').textContent = "Local Network (Not Deployed)";
-                    }
-                    document.getElementById('footerEtherscanLink').textContent = "Local Network";
-                } else {
-                    explorerUrl = '#';
-                }
-                
-                document.getElementById('etherscanLink').href = explorerUrl;
-                document.getElementById('footerEtherscanLink').href = explorerUrl;
-                
-                console.log('Contract address set to:', CONFIG.CONTRACT_ADDRESS);
-                console.log('Explorer URL set to:', explorerUrl);
-            }
-            
-            // Initial update
-            updateNetworkUI();
-            
-            // Listen for network changes
-            document.querySelectorAll('.dropdown-item[data-network]').forEach(item => {
-                item.addEventListener('click', function() {
-                    // Update happens after CONFIG is updated in the click handler
-                    setTimeout(updateNetworkUI, 100);
-                });
-            });
-        });
-    </script>
+    <!-- Debug script moved to external file -->
+    <script src="js/network-ui.js"></script>
 </body>
 </html>

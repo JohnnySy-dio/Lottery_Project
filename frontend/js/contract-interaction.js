@@ -119,6 +119,45 @@ class ContractInteraction {
         }
     }
 
+    // Get the winner of a specific lottery ID
+    async getLotteryWinner(lotteryId) {
+        try {
+            const winner = await this.getContract().methods.lotteryHistory(lotteryId).call();
+            return winner;
+        } catch (error) {
+            console.error(`Failed to get winner for lottery ID ${lotteryId}:`, error);
+            throw error;
+        }
+    }
+    
+    // Get previous lottery winners (fetches winners for past lotteries)
+    async getPreviousWinners() {
+        try {
+            const currentLotteryId = await this.getCurrentLotteryId();
+            const winnersPromises = [];
+            
+            // We start from lottery ID 1 and go up to current ID - 1
+            // We don't include current lottery since it doesn't have a winner yet
+            for (let i = 1; i < currentLotteryId; i++) {
+                winnersPromises.push(this.getLotteryWinner(i));
+            }
+            
+            const winners = await Promise.all(winnersPromises);
+            
+            // Format the results as an array of objects with id and address
+            return winners.map((address, index) => ({
+                id: index + 1, // Lottery IDs start at 1
+                address: address
+            })).filter(winner => 
+                // Filter out zero addresses (lotteries with no winner)
+                winner.address !== '0x0000000000000000000000000000000000000000'
+            );
+        } catch (error) {
+            console.error("Failed to get previous winners:", error);
+            return [];
+        }
+    }
+
     // Check if an address has joined a lottery
     async hasJoined(lotteryId, address) {
         try {
@@ -241,50 +280,59 @@ class ContractInteraction {
         }
     }
 
-    // Start a new lottery (owner only)
-    async startNewLottery() {
-        if (!this.web3Provider.isWriteConnected) {
-            throw new Error("MetaMask not connected. Please connect your wallet to start a lottery.");
-        }
-
+    // Pick a winner for the lottery
+    async pickWinner(lotteryId) {
         try {
-            // Check if current lottery is still open
-            const isOpen = await this.getContract().methods.lotteryOpen().call();
-            if (isOpen) {
-                // If open, check if there are participants
-                const playerCount = await this.getContract().methods.getPlayerCount().call();
-                if (parseInt(playerCount) > 0) {
-                    throw new Error("Cannot start a new lottery while current lottery is open with participants. Please close the current lottery and pick a winner first.");
-                }
+            // Ensure we have a valid contract
+            if (!this.web3Provider.writeContract) {
+                throw new Error("Write contract not initialized");
+            }
+            
+            // Check if we have a connected account
+            if (!this.web3Provider.isWriteConnected) {
+                throw new Error("MetaMask not connected. Please connect your wallet to pick a winner.");
             }
             
             if (this.statusCallbacks.onPending) {
-                this.statusCallbacks.onPending("Starting new lottery...");
+                this.statusCallbacks.onPending("Picking winner...");
             }
             
-            // Contract doesn't have startNewLottery, it uses openLottery
-            const tx = this.getContract(true).methods.openLottery();
+            // Execute the pickWinner function - note that contract's pickWinner doesn't take parameters
+            const tx = this.getContract(true).methods.pickWinner();
             return this._sendTransaction(tx, "0");
+            
         } catch (error) {
-            console.error("Failed to start new lottery:", error);
-            if (this.statusCallbacks.onError) {
-                this.statusCallbacks.onError("Failed to start new lottery: " + error.message);
+            console.error("Error in pickWinner:", error);
+            
+            // Special handling for the "Wait 1 minute" error
+            if (error.message && error.message.includes("Wait 1 minute")) {
+                const friendlyError = new Error("Smart contract requires more time before picking a winner. Please wait a few more seconds for blockchain consensus, then try again.");
+                if (this.statusCallbacks.onError) {
+                    this.statusCallbacks.onError(friendlyError.message);
+                }
+                throw friendlyError;
             }
+            
+            // Pass other errors to callback
+            if (this.statusCallbacks.onError) {
+                this.statusCallbacks.onError(error.message);
+            }
+            
             throw error;
         }
     }
-
-    // Pick winner (owner only)
-    async pickWinner(lotteryId) {
+    
+    // Commit randomness (first step of two-step winner selection)
+    async commitRandomness() {
         if (!this.web3Provider.isWriteConnected) {
-            throw new Error("MetaMask not connected. Please connect your wallet to pick a winner.");
+            throw new Error("MetaMask not connected. Please connect your wallet to commit randomness.");
         }
 
         try {
-            // Check if lottery is open
+            // Check if lottery is closed
             const isOpen = await this.getContract().methods.lotteryOpen().call();
-            if (!isOpen) {
-                throw new Error("Cannot pick a winner: The lottery is not open.");
+            if (isOpen) {
+                throw new Error("Lottery must be closed before committing randomness.");
             }
             
             // Check if there are enough participants
@@ -294,30 +342,24 @@ class ContractInteraction {
             ]);
             
             if (parseInt(playerCount) === 0) {
-                throw new Error("Cannot pick a winner: There are no participants in the lottery.");
+                throw new Error("Cannot commit randomness: There are no participants in the lottery.");
             }
             
             if (parseInt(playerCount) < parseInt(minPlayers)) {
-                throw new Error(`Cannot pick a winner: Need at least ${minPlayers} participants (currently ${playerCount}).`);
+                throw new Error(`Cannot commit randomness: Need at least ${minPlayers} participants (currently ${playerCount}).`);
             }
             
             if (this.statusCallbacks.onPending) {
-                this.statusCallbacks.onPending("Picking winner...");
+                this.statusCallbacks.onPending("Committing randomness...");
             }
             
-            // First close the lottery
-            await this._sendTransaction(
-                this.getContract(true).methods.closeLottery(),
-                "0"
-            );
-            
-            // Then pick the winner - contract doesn't take a lotteryId param
-            const tx = this.getContract(true).methods.pickWinner();
+            const tx = this.getContract(true).methods.commitRandomness();
             return this._sendTransaction(tx, "0");
+            
         } catch (error) {
-            console.error("Failed to pick winner:", error);
+            console.error("Failed to commit randomness:", error);
             if (this.statusCallbacks.onError) {
-                this.statusCallbacks.onError("Failed to pick winner: " + error.message);
+                this.statusCallbacks.onError("Failed to commit randomness: " + error.message);
             }
             throw error;
         }
@@ -448,6 +490,104 @@ class ContractInteraction {
             console.error("Failed to close lottery:", error);
             if (this.statusCallbacks.onError) {
                 this.statusCallbacks.onError("Failed to close lottery: " + error.message);
+            }
+            throw error;
+        }
+    }
+
+    // Emergency stop (owner only)
+    async setEmergencyStop(isPaused) {
+        if (!this.web3Provider.isWriteConnected) {
+            throw new Error("MetaMask not connected. Please connect your wallet to use emergency stop.");
+        }
+
+        try {
+            if (this.statusCallbacks.onPending) {
+                this.statusCallbacks.onPending(isPaused ? "Enabling emergency stop..." : "Disabling emergency stop...");
+            }
+            
+            // Call the contract method to set emergency stop
+            const tx = this.getContract(true).methods.setEmergencyStop(isPaused);
+            return this._sendTransaction(tx, "0");
+        } catch (error) {
+            console.error("Failed to set emergency stop:", error);
+            if (this.statusCallbacks.onError) {
+                this.statusCallbacks.onError("Failed to set emergency stop: " + error.message);
+            }
+            throw error;
+        }
+    }
+    
+    // Transfer ownership (owner only)
+    async transferOwnership(newOwnerAddress) {
+        if (!this.web3Provider.isWriteConnected) {
+            throw new Error("MetaMask not connected. Please connect your wallet to transfer ownership.");
+        }
+
+        try {
+            // Validate the address
+            const web3 = this.web3Provider.getWeb3();
+            if (!web3.utils.isAddress(newOwnerAddress)) {
+                throw new Error("Invalid Ethereum address format.");
+            }
+            
+            if (this.statusCallbacks.onPending) {
+                this.statusCallbacks.onPending("Transferring ownership...");
+            }
+            
+            // Call the contract method to transfer ownership
+            const tx = this.getContract(true).methods.transferOwnership(newOwnerAddress);
+            return this._sendTransaction(tx, "0");
+        } catch (error) {
+            console.error("Failed to transfer ownership:", error);
+            if (this.statusCallbacks.onError) {
+                this.statusCallbacks.onError("Failed to transfer ownership: " + error.message);
+            }
+            throw error;
+        }
+    }
+    
+    // Check if contract is paused
+    async isContractPaused() {
+        try {
+            const contract = this.getContract();
+            // Check if the contract has this function before calling it
+            if (contract.methods.contractPaused) {
+                return await contract.methods.contractPaused().call();
+            } else {
+                console.warn("Contract does not have contractPaused function. Using older contract version.");
+                return false; // Default to not paused for older contract versions
+            }
+        } catch (error) {
+            console.error("Failed to check if contract is paused:", error);
+            return false; // Default to not paused on error
+        }
+    }
+
+    // Open lottery (owner only)
+    async openLottery() {
+        if (!this.web3Provider.isWriteConnected) {
+            throw new Error("MetaMask not connected. Please connect your wallet to open the lottery.");
+        }
+
+        try {
+            // Check if current lottery is still open
+            const isOpen = await this.getContract().methods.lotteryOpen().call();
+            if (isOpen) {
+                throw new Error("Cannot open: Lottery is already open");
+            }
+            
+            if (this.statusCallbacks.onPending) {
+                this.statusCallbacks.onPending("Opening lottery...");
+            }
+            
+            // Uses the contract's openLottery method
+            const tx = this.getContract(true).methods.openLottery();
+            return this._sendTransaction(tx, "0");
+        } catch (error) {
+            console.error("Failed to open lottery:", error);
+            if (this.statusCallbacks.onError) {
+                this.statusCallbacks.onError("Failed to open lottery: " + error.message);
             }
             throw error;
         }
